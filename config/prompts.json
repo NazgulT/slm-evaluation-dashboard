@@ -1,0 +1,7 @@
+[
+  { "id": "factual_01", "text": "What is the capital of France?", "category": "factual" },
+  { "id": "creative_01", "text": "Write a one-sentence story about a robot.", "category": "creative" },
+  { "id": "reason_01", "text": "All cats are mammals. Is a cat a mammal?", "category": "reasoning" },
+  { "id": "code_01", "text": "Write a Python function to reverse a string.", "category": "code" },
+  { "id": "instruct_01", "text": "List three tips for writing clean code.", "category": "instruction" }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "phi3:mini",
+    "display_name": "Phi-3 Mini",
+    "parameters": "~3.8B"
+  },
+  {
+    "name": "gemma2:2b",
+    "display_name": "Gemma 2 2B",
+    "parameters": "~2.6B"
+  },
+  {
+    "name": "qwen2.5:3b",
+    "display_name": "Qwen 2.5 3B",
+    "parameters": "~3B"
+  },
+  {
+    "name": "llama3.2:3b",
+    "display_name": "Llama 3.2 3B",
+    "parameters": "~3.2B"
+  }
+]

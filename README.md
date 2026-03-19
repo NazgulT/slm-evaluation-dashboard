@@ -1,4 +1,4 @@
-# SLM Evaluation Dashboard
+# Small Language Model Evaluation Dashboard
 
 A small language model (SLM) evaluation dashboard that runs **entirely offline** using [Ollama](https://ollama.com) as the local inference backend. It benchmarks multiple small models (2–5B parameters) across three phases: raw inference performance, structured output validation, and temperature variance analysis. Results are written to CSV and exposed via a REST API for a React dashboard.
 

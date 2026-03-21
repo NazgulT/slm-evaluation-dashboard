@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 
-const NUMERIC_KEYS = ['ttft_ms', 'tokens_per_second', 'total_latency_ms', 'token_count']
+const NUMERIC_KEYS = ['ttft_ms', 'tokens_per_second', 'total_latency_ms', 'token_count', 'normalised_tps']
 
 function sortBy(results, key, dir) {
   return [...results].sort((a, b) => {
@@ -51,6 +51,8 @@ export default function MetricsTable({ results, showValidation = false }) {
     'tokens_per_second',
     'total_latency_ms',
     'token_count',
+    'normalised_tps',
+    'machine_id',
   ]
   if (showValidation) cols.push('valid_json', 'retry_used')
   cols.push('error')

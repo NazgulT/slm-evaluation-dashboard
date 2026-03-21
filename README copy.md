@@ -94,15 +94,12 @@ Token generation speed slightly differs amongst the models. `qwen2.5:3b` leads a
 **Summary Recommendation**
 `qwen2.5:3b` and `llama3.2:3b` offer the best balance of speed and throughput for latency-sensitive applications. `gemma2:2b` remains the strongest choice where output reliability is the top priority. `phi3:mini` continues to trail the field on both throughput and latency and is best suited for tasks where response time is not a constraint.
 
-<<<<<<< HEAD
-=======
 
 ## Portability
 
 - **System fingerprinting:** Hardware context (CPU, RAM, GPU, OS) is captured and saved to `data/system_profile.json`. A `machine_id` hash links each result to its hardware.
 - **Normalised TPS:** A calibration run per model yields a baseline; `normalised_tps = observed_tps / baseline_tps` makes results comparable across machines.
 - **Comparison mode:** In the Phase 1 tab, upload a second `results.csv` from another machine to compare TPS side by side.
->>>>>>> 658cbdb (Added hardware context, baseline for benchmarking, normalised performance index)
 
 ## Methodology
 

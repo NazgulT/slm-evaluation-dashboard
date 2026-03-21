@@ -17,6 +17,7 @@ from pathlib import Path
 from backend.csv_writer import CSVWriter
 from backend.ollama_client import OllamaClient
 from backend.schemas import ModelResponse
+from backend.system_profile import capture_and_save, load_profile
 from backend.temperature import run_sweep as run_phase3_sweep
 
 # Default paths relative to project root
@@ -41,7 +42,11 @@ RESULTS_HEADER = [
     "retry_used",
     "raw_output",
     "error",
+    "machine_id",
+    "normalised_tps",
 ]
+
+CALIBRATION_PROMPT = "Count from 1 to 50."
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,6 +80,34 @@ def load_prompts_config() -> list[dict]:
     return data
 
 
+async def run_calibration(
+    client: OllamaClient,
+    models: list[dict],
+    model_filter: str | None = None,
+) -> dict[str, float]:
+    """Run 50-token synthetic task per model at temp 0; return baseline TPS per model."""
+    model_list = [m for m in models if model_filter is None or m.get("name") == model_filter]
+    baseline: dict[str, float] = {}
+    for model_cfg in model_list:
+        model_name = model_cfg.get("name", "")
+        try:
+            m = await client.generate(
+                model=model_name,
+                prompt=CALIBRATION_PROMPT,
+                prompt_id="calibration",
+                prompt_category="calibration",
+                temperature=0.0,
+                num_predict=50,
+            )
+            tps = m.tokens_per_second if not m.error else 0.0
+            baseline[model_name] = tps if tps > 0 else 1.0  # avoid div by zero
+            logger.info("Calibration %s: baseline TPS %.1f", model_name, baseline[model_name])
+        except Exception as e:
+            logger.warning("Calibration failed for %s: %s", model_name, e)
+            baseline[model_name] = 1.0
+    return baseline
+
+
 async def run_phase1(
     client: OllamaClient,
     csv_writer: CSVWriter,
@@ -82,11 +115,14 @@ async def run_phase1(
     prompts: list[dict],
     dry_run: bool = False,
     model_filter: str | None = None,
+    machine_id: str = "",
+    baseline_tps: dict[str, float] | None = None,
 ) -> None:
     """
     Phase 1: Raw inference benchmarking.
     Run every model against every prompt sequentially; write one row to CSV after each run.
     """
+    baseline_tps = baseline_tps or {}
     model_list = [m for m in models if model_filter is None or m.get("name") == model_filter]
     if not model_list:
         logger.warning("No models to run (check --model filter or config)")
@@ -111,38 +147,42 @@ async def run_phase1(
                 )
             except Exception as e:
                 logger.exception("Evaluation failed for model=%s prompt_id=%s", model_name, prompt_id)
-                row = {
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "model": model_name,
-                    "prompt_id": prompt_id,
-                    "prompt_category": prompt_category,
-                    "ttft_ms": "",
-                    "tokens_per_second": "",
-                    "total_latency_ms": "",
-                    "token_count": "",
-                    "valid_json": "",
-                    "retry_used": "",
-                    "raw_output": "",
-                    "error": str(e),
-                }
+                row = _result_row(
+                    model_name,
+                    prompt_id,
+                    prompt_category,
+                    ttft_ms="",
+                    tps="",
+                    latency_ms="",
+                    token_count="",
+                    valid_json=False,
+                    retry_used=False,
+                    raw_output="",
+                    error=str(e),
+                    machine_id=machine_id,
+                    normalised_tps="",
+                )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
                 continue
 
-            row = {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "model": metrics.model,
-                "prompt_id": metrics.prompt_id,
-                "prompt_category": metrics.prompt_category,
-                "ttft_ms": round(metrics.ttft_ms, 2),
-                "tokens_per_second": round(metrics.tokens_per_second, 2),
-                "total_latency_ms": round(metrics.total_latency_ms, 2),
-                "token_count": metrics.token_count,
-                "valid_json": True,  # Phase 1 does not validate JSON
-                "retry_used": False,
-                "raw_output": metrics.raw_text[:2000] if metrics.raw_text else "",  # cap for CSV
-                "error": metrics.error or "",
-            }
+            base = baseline_tps.get(model_name) or 1.0
+            norm_tps = round(metrics.tokens_per_second / base, 4) if base else ""
+            row = _result_row(
+                metrics.model,
+                metrics.prompt_id,
+                metrics.prompt_category,
+                ttft_ms=round(metrics.ttft_ms, 2),
+                tps=round(metrics.tokens_per_second, 2),
+                latency_ms=round(metrics.total_latency_ms, 2),
+                token_count=metrics.token_count,
+                valid_json=True,
+                retry_used=False,
+                raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
+                error=metrics.error or "",
+                machine_id=machine_id,
+                normalised_tps=norm_tps,
+            )
 
             if dry_run:
                 print(json.dumps(row, indent=2))
@@ -193,11 +233,14 @@ async def run_phase2(
     prompts: list[dict],
     dry_run: bool = False,
     model_filter: str | None = None,
+    machine_id: str = "",
+    baseline_tps: dict[str, float] | None = None,
 ) -> None:
     """
     Phase 2: Structured output validation.
     System prompt enforces JSON schema; one retry with corrective message on validation failure.
     """
+    baseline_tps = baseline_tps or {}
     model_list = [m for m in models if model_filter is None or m.get("name") == model_filter]
     if not model_list:
         logger.warning("No models to run (check --model filter or config)")
@@ -243,6 +286,8 @@ async def run_phase2(
                     retry_used=False,
                     raw_output="",
                     error=str(e),
+                    machine_id=machine_id,
+                    normalised_tps="",
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -252,6 +297,9 @@ async def run_phase2(
                 continue
 
             if metrics.error:
+                base = baseline_tps.get(model_name) or 1.0
+                tps_val = metrics.tokens_per_second
+                norm = round(tps_val / base, 4) if base and tps_val else ""
                 row = _result_row(
                     model_name,
                     prompt_id,
@@ -264,6 +312,8 @@ async def run_phase2(
                     retry_used=False,
                     raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
                     error=metrics.error,
+                    machine_id=machine_id,
+                    normalised_tps=norm,
                 )
                 if dry_run:
                     print(json.dumps(row, indent=2))
@@ -273,6 +323,9 @@ async def run_phase2(
 
             valid, parsed = _validate_phase2_response(metrics.raw_text)
             if valid:
+                base = baseline_tps.get(model_name) or 1.0
+                tps_val = metrics.tokens_per_second
+                norm = round(tps_val / base, 4) if base and tps_val else ""
                 row = _result_row(
                     model_name,
                     prompt_id,
@@ -285,6 +338,8 @@ async def run_phase2(
                     retry_used=False,
                     raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
                     error="",
+                    machine_id=machine_id,
+                    normalised_tps=norm,
                 )
                 if dry_run:
                     print(json.dumps(row, indent=2))
@@ -304,6 +359,9 @@ async def run_phase2(
                 )
             except Exception as e:
                 logger.warning("Phase 2 retry failed (exception) %s / %s: %s", model_name, prompt_id, e)
+                base = baseline_tps.get(model_name) or 1.0
+                tps_val = metrics.tokens_per_second
+                norm = round(tps_val / base, 4) if base and tps_val else ""
                 row = _result_row(
                     model_name,
                     prompt_id,
@@ -316,6 +374,8 @@ async def run_phase2(
                     retry_used=True,
                     raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
                     error=str(e),
+                    machine_id=machine_id,
+                    normalised_tps=norm,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -324,6 +384,9 @@ async def run_phase2(
                 continue
 
             if metrics_retry.error:
+                base = baseline_tps.get(model_name) or 1.0
+                tps_val = metrics_retry.tokens_per_second
+                norm = round(tps_val / base, 4) if base and tps_val else ""
                 row = _result_row(
                     model_name,
                     prompt_id,
@@ -336,6 +399,8 @@ async def run_phase2(
                     retry_used=True,
                     raw_output=metrics_retry.raw_text[:2000] if metrics_retry.raw_text else "",
                     error=metrics_retry.error,
+                    machine_id=machine_id,
+                    normalised_tps=norm,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -344,6 +409,9 @@ async def run_phase2(
                 continue
 
             valid_retry, _ = _validate_phase2_response(metrics_retry.raw_text)
+            base = baseline_tps.get(model_name) or 1.0
+            tps_val = metrics_retry.tokens_per_second
+            norm = round(tps_val / base, 4) if base and tps_val else ""
             row = _result_row(
                 model_name,
                 prompt_id,
@@ -356,6 +424,8 @@ async def run_phase2(
                 retry_used=True,
                 raw_output=metrics_retry.raw_text[:2000] if metrics_retry.raw_text else "",
                 error="",
+                machine_id=machine_id,
+                normalised_tps=norm,
             )
             if dry_run:
                 print(json.dumps(row, indent=2))
@@ -381,6 +451,8 @@ def _result_row(
     retry_used: bool,
     raw_output: str,
     error: str,
+    machine_id: str = "",
+    normalised_tps: float | str = "",
 ) -> dict:
     """Build a single results.csv row dict."""
     return {
@@ -396,6 +468,8 @@ def _result_row(
         "retry_used": retry_used,
         "raw_output": raw_output,
         "error": error,
+        "machine_id": machine_id,
+        "normalised_tps": normalised_tps,
     }
 
 
@@ -450,6 +524,17 @@ async def main_async() -> int:
         return 1
 
     csv_writer = CSVWriter()
+    machine_id = ""
+    baseline_tps: dict[str, float] = {}
+
+    if args.phase in ("1", "2"):
+        profile = capture_and_save()
+        machine_id = profile.get("machine_id", "")
+        if not args.dry_run:
+            baseline_tps = await run_calibration(client, models, model_filter=args.model)
+            capture_and_save(baseline_tps=baseline_tps)
+    elif args.phase == "3":
+        capture_and_save()
 
     if args.phase == "1":
         await run_phase1(
@@ -459,6 +544,8 @@ async def main_async() -> int:
             prompts,
             dry_run=args.dry_run,
             model_filter=args.model,
+            machine_id=machine_id,
+            baseline_tps=baseline_tps,
         )
     elif args.phase == "2":
         await run_phase2(
@@ -468,6 +555,8 @@ async def main_async() -> int:
             prompts,
             dry_run=args.dry_run,
             model_filter=args.model,
+            machine_id=machine_id,
+            baseline_tps=baseline_tps,
         )
     elif args.phase == "3":
         await run_phase3_sweep(

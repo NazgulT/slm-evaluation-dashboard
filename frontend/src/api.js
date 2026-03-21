@@ -37,6 +37,10 @@ export async function getPrompts() {
   return fetchApi('/config/prompts');
 }
 
+export async function getSystemProfile() {
+  return fetchApi('/system-profile');
+}
+
 export async function triggerRun(phase = 1) {
   return fetchApi(`/run?phase=${phase}`, { method: 'POST' });
 }

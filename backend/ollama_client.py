@@ -40,6 +40,7 @@ class OllamaClient:
         prompt_category: str = "",
         system_prompt: str | None = None,
         temperature: float | None = None,
+        num_predict: int | None = None,
     ) -> InferenceMetrics:
         """
         Run streaming inference and record timing metrics.
@@ -63,8 +64,13 @@ class OllamaClient:
         }
         if system_prompt:
             body["system"] = system_prompt
+        opts = {}
         if temperature is not None:
-            body["options"] = {"temperature": temperature}
+            opts["temperature"] = temperature
+        if num_predict is not None:
+            opts["num_predict"] = num_predict
+        if opts:
+            body["options"] = opts
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

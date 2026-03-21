@@ -15,8 +15,14 @@
 
 - The goal is to **measure** how reliably models produce valid JSON, not to keep retrying until they succeed. One retry with a corrective message (“Your previous response was not valid JSON…”) distinguishes “fixes after one nudge” from “fails even with guidance.” Multiple retries would blur that signal and make results less comparable.
 
+## System fingerprinting and normalised TPS
+
+- **Hardware context:** Before each run, the system captures CPU model, core count, RAM, GPU (if present), and OS. This is saved to `data/system_profile.json` and a short `machine_id` hash is appended to every result row for traceability.
+- **Calibration baseline:** A 50-token synthetic task at temperature 0 is run per model before the main evaluation. The resulting TPS is stored as the **baseline** for that session.
+- **Normalised TPS:** `normalised_tps = observed_tps / baseline_tps` gives a hardware-agnostic ratio. Values above 1.0 mean the model ran faster than its own calibration; below 1.0 means slower. This ratio can be meaningfully compared across different machines.
+
 ## Known limitations
 
-- **Machine-dependent:** Timings (TTFT, TPS, latency) depend on CPU/GPU, load, and thermal state. Results are comparable on the same machine; cross-machine comparison should be done with care.
+- **Machine-dependent:** Raw timings (TTFT, TPS, latency) depend on CPU/GPU, load, and thermal state. Normalised TPS and the comparison mode help, but absolute numbers remain environment-specific.
 - **Single-threaded by design:** Evaluations run sequentially (one model–prompt pair at a time) to avoid resource contention that would skew timing metrics.
 - **Ollama-specific:** The pipeline targets Ollama’s API and streaming behaviour; other backends would need adapter changes.

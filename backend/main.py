@@ -20,6 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
 RESULTS_CSV = DATA_DIR / "results.csv"
+SYSTEM_PROFILE_PATH = DATA_DIR / "system_profile.json"
 TEMPERATURE_CSV = DATA_DIR / "temperature_runs.csv"
 MODELS_CONFIG = CONFIG_DIR / "models.json"
 
@@ -46,9 +47,11 @@ async def run_evaluation_async(phase: int = 1) -> None:
         from backend.evaluator import (
             load_models_config as load_models,
             load_prompts_config,
+            run_calibration,
             run_phase1,
             run_phase2,
         )
+        from backend.system_profile import capture_and_save
         from backend.temperature import run_sweep as run_phase3_sweep
         from backend.csv_writer import CSVWriter
 
@@ -56,11 +59,21 @@ async def run_evaluation_async(phase: int = 1) -> None:
         prompts = load_prompts_config()
         client = OllamaClient()
         csv_writer = CSVWriter()
-        if phase == 1:
-            await run_phase1(client, csv_writer, models, prompts, dry_run=False)
-        elif phase == 2:
-            await run_phase2(client, csv_writer, models, prompts, dry_run=False)
-        else:
+
+        if phase in (1, 2):
+            # Capture hardware and run calibration before phase 1 or 2
+            profile = capture_and_save()
+            machine_id = profile.get("machine_id", "")
+            baseline_tps = await run_calibration(client, models)
+            capture_and_save(baseline_tps=baseline_tps)
+
+            if phase == 1:
+                await run_phase1(client, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
+            else:
+                await run_phase2(client, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
+        elif phase == 3:
+            # Phase 3: capture profile only (no calibration needed for temperature runs)
+            capture_and_save()
             await run_phase3_sweep(client, csv_writer, models, prompts, dry_run=False)
     except Exception as e:
         import logging
@@ -102,6 +115,19 @@ async def get_config_models():
     """Return model display metadata from config/models.json."""
     data = load_models_config()
     return {"models": data}
+
+
+@app.get("/system-profile")
+async def get_system_profile():
+    """Return hardware context from data/system_profile.json for dashboard banner."""
+    try:
+        from backend.system_profile import load_profile, capture_and_save, format_banner
+        profile = load_profile()
+        if not profile:
+            profile = capture_and_save()
+        return {"profile": profile, "banner": format_banner(profile)}
+    except Exception:
+        return {"profile": None, "banner": "Benchmarked on: unknown system"}
 
 
 @app.get("/config/prompts")
@@ -152,7 +178,7 @@ async def get_results():
         reader = csv.DictReader(f)
         for row in reader:
             # Coerce numeric columns for frontend
-            for key in ("ttft_ms", "tokens_per_second", "total_latency_ms", "token_count"):
+            for key in ("ttft_ms", "tokens_per_second", "total_latency_ms", "token_count", "normalised_tps"):
                 if key in row and row[key] != "":
                     try:
                         if key == "token_count":

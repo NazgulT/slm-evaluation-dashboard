@@ -4,6 +4,7 @@ import {
   getResults,
   getValidationSummary,
   getVariance,
+  getSystemProfile,
   triggerRun,
   triggerTemperatureRun,
 } from './api'
@@ -13,6 +14,38 @@ import ValidationPanel from './ValidationPanel'
 import TemperatureChart from './TemperatureChart'
 
 const POLL_INTERVAL_MS = 3000
+
+function parseUploadedCsv(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => {
+      try {
+        const text = (r.result || '').trim()
+        const lines = text.split(/\r?\n/)
+        if (!lines.length) return resolve([])
+        const parseRow = (line) => {
+          const vals = (line.match(/("(?:[^"]|"")*"|[^,]*)/g) || []).map((v) =>
+            v.replace(/^"|"$/g, '').replace(/""/g, '"').trim()
+          )
+          return vals
+        }
+        const headers = parseRow(lines[0])
+        const rows = []
+        for (let i = 1; i < lines.length; i++) {
+          const vals = parseRow(lines[i])
+          const row = {}
+          headers.forEach((h, j) => { row[h] = vals[j] ?? '' })
+          rows.push(row)
+        }
+        resolve(rows)
+      } catch (e) {
+        reject(e)
+      }
+    }
+    r.onerror = () => reject(new Error('Failed to read file'))
+    r.readAsText(file)
+  })
+}
 
 function downloadCsv(data, filename) {
   if (!data.length) return
@@ -32,22 +65,27 @@ export default function App() {
   const [results, setResults] = useState([])
   const [validationSummary, setValidationSummary] = useState({})
   const [variance, setVariance] = useState({ results: [], by_model_prompt: {} })
+  const [systemBanner, setSystemBanner] = useState('')
+  const [comparisonResults, setComparisonResults] = useState([])
+  const [comparisonLabel, setComparisonLabel] = useState('')
   const [error, setError] = useState(null)
   const [runningPhase, setRunningPhase] = useState(null)
 
   const refresh = useCallback(async () => {
     setError(null)
     try {
-      const [s, r, vsum, v] = await Promise.all([
+      const [s, r, vsum, v, prof] = await Promise.all([
         getStatus(),
         getResults().then((d) => d.results || []),
         getValidationSummary().then((d) => d.summary || {}),
         getVariance().then((d) => ({ results: d.results || [], by_model_prompt: d.by_model_prompt || {} })),
+        getSystemProfile().then((d) => d.banner || ''),
       ])
       setStatus(s)
       setResults(r)
       setValidationSummary(vsum)
       setVariance(v)
+      setSystemBanner(prof)
     } catch (e) {
       setError(e.message)
     }
@@ -110,6 +148,12 @@ export default function App() {
         {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       </header>
 
+      {systemBanner && (
+        <div className="border-b border-stone-700 bg-stone-800/60 px-6 py-2 text-center text-sm text-stone-500">
+          {systemBanner}
+        </div>
+      )}
+
       <nav className="flex border-b border-stone-700 bg-stone-900/50">
         {[
           { id: 'phase1', label: 'Phase 1 — Performance' },
@@ -141,15 +185,53 @@ export default function App() {
                   Together these metrics give a concrete sense of which models feel snappy vs sluggish on your machine.
                 </p>
               </div>
+              <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-stone-400">
+                Compare with
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    try {
+                      const rows = await parseUploadedCsv(f)
+                      setComparisonResults(rows)
+                      setComparisonLabel(f.name)
+                    } catch (err) {
+                      setError('Failed to parse uploaded CSV')
+                    }
+                    e.target.value = ''
+                  }}
+                />
+                <span className="cursor-pointer rounded bg-stone-700 px-3 py-1.5 text-stone-200 hover:bg-stone-600">
+                  Upload results.csv
+                </span>
+              </label>
+              {comparisonResults.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setComparisonResults([]); setComparisonLabel('') }}
+                  className="text-xs text-stone-500 hover:text-stone-300"
+                >
+                  Clear
+                </button>
+              )}
               <button
                 onClick={() => downloadCsv(results, 'results.csv')}
                 disabled={!results.length}
-                className="mt-1 rounded bg-stone-700 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-600 disabled:opacity-50"
+                className="rounded bg-stone-700 px-3 py-1.5 text-sm text-stone-200 hover:bg-stone-600 disabled:opacity-50"
               >
                 Download CSV
               </button>
             </div>
-            <PerformanceChart results={results} />
+            </div>
+            <PerformanceChart
+              results={results}
+              comparisonResults={comparisonResults}
+              comparisonLabel={comparisonLabel}
+            />
             <MetricsTable results={results} showValidation={false} />
           </>
         )}

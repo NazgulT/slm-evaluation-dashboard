@@ -1,226 +1,289 @@
-timestamp,model,prompt_id,prompt_category,ttft_ms,tokens_per_second,total_latency_ms,token_count,valid_json,retry_used,raw_output,error,machine_id,normalised_tps
-2026-03-20T03:02:15.166918Z,phi3:mini,factual_01,factual,6608.06,8.56,21526.89,127,True,False,"The capital of France is Paris. It' end up as a major European city and an important center for art, fashion, gastronomy, and culture in general. Designed by the famous French architect Pierre Charles L'Enfant to serve as the ""Fair and Beautiful City,"" Washington D.C.'s layout was notably influenced by this vision of Paris with its wide avenues lined by trees and grand squares or public spaces—a concept derived from Pierre Charles L'Enfant’s original plan for the city, which drew inspiration from cities like Versailles in France as well.",,6d47bfea54c5,0.5713
-2026-03-20T03:02:23.528864Z,phi3:mini,creative_01,creative,1289.42,8.81,8357.25,62,True,False,"In the bustling city of Neo Tokyo, R2D3, an empathetic service robot with advanced artificial intelligence and mechanical limbs made from shining titanium alloys, tirelessly assisted its elderly owners through their daily tasks while providing companionship and comfort.",,6d47bfea54c5,0.5884
-2026-03-20T03:02:40.188130Z,phi3:mini,reason_01,reasoning,1446.42,9.31,16658.75,141,True,False,"Yes, based on the statement ""All cats are mammals,"" we can conclude that any individual animal referred to as a 'cat' would indeed be classified as a mammal since it falls under the category defined by this universal affirmative categorical proposition. Categorical propositions of this form establish an all-encompassing relationship where, if something is identified within these criteria (in this case being called or recognized as a 'cat'), then it possesses the properties attributed to that classification - which includes mammals in general for cats specifically. Therefore, any individual referred to as a cat would be considered a member of the larger class Mammalia.",,6d47bfea54c5,0.6218
-2026-03-20T03:02:49.378367Z,phi3:mini,code_01,code,874.14,10.75,9189.65,89,True,False,"```python
-def reverse_string(s: str) -> str:
-    return s[::-1]
+timestamp,phase,model,prompt_id,prompt_category,ttft_ms,tokens_per_second,total_latency_ms,token_count,valid_json,retry_used,raw_output,error,machine_id,normalised_tps
+2026-06-05T04:47:25.573060+00:00,1,phi3:mini,factual_01,factual,7581.68,11.32,20361.51,144,,,"The capital of France is Paris. It'nercled by its historical monuments, iconic landmarks such as the Eiffel Tower and Notre-Dame Cathedral, it stands at the heart of French culture and economy. As one of Europe's most visited cities, Paris attracts millions of tourists each year with its rich history dating back to ancient times when Romans founded a settlement on its banks. Today, as France’s economic and political center, it is recognized globally for being not just the capital city but also an influential metropolis driving French heritage forward into modernity while preserving significant architectural treasures of bygone eras within its urban landscape.",,db958ad76dc3,0.7964
+2026-06-05T04:47:31.798610+00:00,1,phi3:mini,creative_01,creative,971.53,11.1,6217.9,58,,,"In the bustling city of Neo York, amidst neon lights and towering skyscrapers, there existed an extraordinary robot named Icarus who dreamed not in binary code but with heartfelt passion for jazz music echoing through his mechanical frame.",,db958ad76dc3,0.7806
+2026-06-05T04:47:41.888748+00:00,1,phi3:mini,reason_01,reasoning,952.49,11.86,10090.06,108,,,"Yes, since all cats fall under the category of mammals as given in the premise that 'all cats are mammals,' any individual being considered is necessarily also a member of this set; therefore, a cat must be classified as a mammal. This conclusion uses deductive reasoning based on categorical syllogism—a form of logical argumentation where two premises lead to an inevitable conclusion about the subject matter (in this case, whether cats are mammals).",,db958ad76dc3,0.8343
+2026-06-05T04:48:02.461778+00:00,1,phi3:mini,code_01,code,643.84,11.18,20572.94,222,,,"Here is a simple and straightforward way of reversing a string in Python:
 
-# Test the function
-input_str = ""Hello, World!""
-reversed_str = reverse_string(inputinstr)
-print(f""Original string: {input_str}"")
-print(f""Reversed string:  {reversed_str}"")
-```",,6d47bfea54c5,0.7177
-2026-03-20T03:03:10.401754Z,phi3:mini,instruct_01,instruction,704.45,10.77,21022.96,218,True,False,"1. Choose meaningful and descriptive names: The name of your variables, functions, or classes should accurately describe their purpose in the program so that it is easy to understand what they do without having to read through all the logic. Avoid using abbreviations where possible as this can make code harder for others (and future you) to read and maintain.
+```python
+def reverse_string(input_str):
+    return inputner_str[::-1]
 
-2. Write concise yet clear comments: Comments are necessary but only when used effectively, such that additional context or explanation is needed in order to understand specific lines of the code. Avoid commenting every line since it defeats the purpose of writing clean code – having readable code should be its own motivation for clarity and simplicity without over-commenting.
+print(reverse_string(""Hello World"")) # prints ""dlroW olleH""
+```
+In this function, we use slicing to create a new string that is the reverse of the original one. The `[::-1]` slice statement means start at the end of the string and end at position 0 going backward, so it effectively reverses the string. This solution has O(n) time complexity where n represents the length of the input_str because every character needs to be visited once when creating a new string that's reverse orderly. Space complexity is also considered as O(n), due to allocation for storing the returned string which will have approximately similar size with respect to original one if we disregard memory already allocated by Python itself, in worst case scenario (i.e., input_str was originally a huge text file).",,db958ad76dc3,0.7864
+2026-06-05T04:48:29.918936+00:00,1,phi3:mini,instruct_01,instruction,666.27,11.61,27454.77,310,,,"1. Use meaningful variable and function names that accurately describe the purpose of their content or action, making it easier to understand what each piece of code is doing at a glance. Avoid using abbreviations unless they are widely accepted in your programming community. For example, instead of naming a list ""lst"", use descriptive terms such as `employeeList` if referring to employees stored within the list.
 
-3. Keep functions short: Each function should have a single responsibility, meaning that it does one thing well, rather than trying to do too many things at once or being very long with multiple responsibilities. This makes the code easier to understand and reduces complexity when changes need to be made later on in development cycles.",,6d47bfea54c5,0.7191
-2026-03-20T03:03:14.232570Z,gemma2:2b,factual_01,factual,2575.55,11.53,3830.23,14,True,False,"The capital of France is **Paris**. 🇫🇷 
-",,6d47bfea54c5,0.5924
-2026-03-20T03:03:17.028665Z,gemma2:2b,creative_01,creative,566.63,16.37,2795.5,35,True,False,"The chrome robot, its gears whirring softly, stood silent beside the human children's laughter, yearning to understand the joy it had been built to share. 
-",,6d47bfea54c5,0.8409
-2026-03-20T03:03:26.591427Z,gemma2:2b,reason_01,reasoning,544.8,15.79,9562.12,138,True,False,"Yes, this statement is true! 
+2. Keep functions small and focused on one task only (single responsibility principle). This helps improve readability by preventing large chunks of code from being executed in sequence without understanding their purpose or effect, which can lead to confusion for anyone reviewing your work later down the line. Additionally, using smaller units makes it easier to test individual components with unit tests and isolate problems when they arise (easy debugging).
 
-Since all cats are mammals, and you were asking if a cat was a mammal, the answer is **yes**. 
+3. Follow consistent indentation and spacing conventions throughout your codebase so that similar blocks of code are visually structured in a uniform way. A common convention is the use of four spaces for each level of nesting within if, elif, else statements or loops such as `for` or while loop structures; however, some people prefer two-space indentation and blank line usage between functions/classes to improve readability - both are acceptable practices provided they remain consistent throughout your project. Remember that maintainable code requires clarity not just in naming conventions but also organization – so be sure you’re following the best convention for your team or individual preference when choosing an approach!",,db958ad76dc3,0.8167
+2026-06-05T04:48:35.565777+00:00,1,gemma2:2b,factual_01,factual,4636.64,14.65,5644.41,14,,,"The capital of France is **Paris**. 🇫🇷  
+",,db958ad76dc3,1.6399
+2026-06-05T04:48:38.280093+00:00,1,gemma2:2b,creative_01,creative,654.73,17.78,2713.75,35,,,"The rusted gears whirred and clicked, as the old robot remembered the warmth of a long-gone sun on its metal skin for the first time in decades. 
+",,db958ad76dc3,1.9902
+2026-06-05T04:48:43.937241+00:00,1,gemma2:2b,reason_01,reasoning,511.94,16.93,5656.62,84,,,"Yes, **a cat is a mammal**. 
 
-Cats fit the definition of a mammal because they:
+Here's why:
 
-* **Have fur:** This provides insulation and helps protect their skin.
-* **Give birth to live young:**  Unlike reptiles or amphibians, cats do not lay eggs. 
-* **Nurse their young with milk:** Female cats produce milk to feed their kittens after birth. 
-* **Are warm-blooded (endothermic):** They regulate their own body temperature. 
+* **Definition of Mammal:** Mammals are warm-blooded animals that have fur or hair, give birth to live young (rarely eggs in some species), and nurse their offspring with milk produced by mammary glands. 
 
-Let me know if you have any other animal trivia questions! 😊
-",,6d47bfea54c5,0.8113
-2026-03-20T03:03:44.664640Z,gemma2:2b,code_01,code,535.27,15.1,18072.83,257,True,False,"```python
-def reverse_string(s):
+Cats fit all these criteria! 
+
+
+Let me know if you have any other animal classification questions! 😊
+",,db958ad76dc3,1.8947
+2026-06-05T04:49:06.734291+00:00,1,gemma2:2b,code_01,code,601.46,15.35,22796.7,330,,,"```python
+def reverse_string(text):
   """"""Reverses a given string.
 
   Args:
-    s: The string to be reversed.
+      text: The string to be reversed.
 
   Returns:
-    The reversed string.
+      The reversed string. 
   """"""
-  return s[::-1]
+  return text[::-1]
 
 # Example usage
-my_string = ""hello world""
-reversed_string = reverse_string(my_string)
-print(f""Original String: {my_string}"")
+string = ""hello world""
+reversed_string = reverse_string(string)
+print(f""Original String: {string}"")
 print(f""Reversed String: {reversed_string}"") 
 ```
 
 **Explanation:**
 
-* **`def reverse_string(s):`**: This line defines the function called `reverse_string`, which accepts a single argument `s` representing the string to be reversed.
-* **`return s[::-1]`**:  This is the core of the reversal logic. It uses slicing with a step of -1 (`[::-1]`) on the input string `s`. This creates a reversed copy of the string without modifying the original. 
+1. **Function Definition:** The code defines a function called `reverse_string` that takes one argument, `text`.
+2. **String Slicing:**  The core of the reversal happens with the slicing operation `[::-1]`. This creates a reversed copy of the string by stepping through it in reverse order.
+3. **Return Value:** The function returns the reversed string.
+4. **Example Usage:**  The code demonstrates how to use the function by: 
+   - Defining a string (`string`).
+   - Calling `reverse_string(string)` to get the reversed string.
+   - Printing both the original and reversed strings using an f-string for easy formatting.
 
-**How it works:**
-* The slice notation `[::-1]` effectively steps through the characters in reverse order from the end to the beginning.
+**How it Works:**
+
+Python's slicing notation allows you to extract parts of a sequence (like a string). The `[::-1]` syntax means:
+  * `:` selects all characters in the string
+  * `-1` as the step value indicates moving backward through the string (effectively reverse)
 
 
-Let me know if you'd like any more details or have other string manipulation tasks! ",,6d47bfea54c5,0.7755
-2026-03-20T03:04:00.602191Z,gemma2:2b,instruct_01,instruction,476.27,15.24,15937.24,228,True,False,"Here are three tips for writing clean code:
 
-1. **Meaningful Naming:** Use descriptive variable, function, and class names that accurately reflect their purpose and content. Avoid generic or cryptic names. For example, ""customer_name"" is clearer than ""c"" and ""cust"". This helps others understand your code and make future changes more easily. 
-2. **Comments:**  When necessary, use clear and concise comments to explain complex logic or obscure decisions. Comments should serve as a roadmap for understanding the 'why' behind your code, not just summarize the 'what'. For example, ""This code section uses a loop to process each item in the list"" is much clearer than simply ""this code"". 
-3. **DRY Principle:**  Avoid repeating yourself by using functions or modules whenever possible to encapsulate common logic and reduce duplication. This makes your code more maintainable and prevents potential errors that could arise from multiple places in different parts of the project.
+Let me know if you have any other programming questions! ",,db958ad76dc3,1.7179
+2026-06-05T04:49:28.290847+00:00,1,gemma2:2b,instruct_01,instruction,445.87,16.97,21556.27,347,,,"Here are three essential tips for writing clean code, along with explanations and examples:
+
+**1.  Readability First:** 
+    * **Focus on Simplicity and Clarity:** Aim to write code that's easy to understand. Use clear variable names, follow consistent naming conventions (like snake_case or camelCase), and employ comments strategically to explain complex logic. 
+    * **Example:** Instead of: `i = counter++`, use: `i = counter; // Increment the counter`
+
+**2. Follow Coding Conventions:**
+    * **Consistency is Key:**  Choose a style guide (like PEP8 for Python or Google's style guide) and apply it consistently throughout your project. This ensures everyone works with the same standards, making code easier to read and review. 
+    * **Example:**  Use indentation in accordance with your chosen style, consistent spacing between statements, and use spaces instead of tabs for readability
+
+**3. Maintain DRY Principle (Don't Repeat Yourself):**
+   * **Leverage Code Reusability:** Write functions or modules that encapsulate specific tasks. This reduces code duplication and makes changes more manageable when the software grows. 
+   * **Example:**  Instead of writing a repetitive `print` statement, create a function called `report_data` to print your information in a consistent format.
+
+**Bonus Tip: Write Tests!**
+* Writing automated tests for your code is essential for maintaining clean code. It helps you detect errors early and ensures that your code still works as intended after changes. 
 
 
-**Bonus Tip:** Don't be afraid to refactor! Regularly reviewing and improving your code for clarity is a must-have habit. 
-",,6d47bfea54c5,0.7827
-2026-03-20T03:04:05.928724Z,qwen2.5:3b,factual_01,factual,4778.16,14.87,5325.95,8,True,False,The capital of France is Paris.,,6d47bfea54c5,1.1694
-2026-03-20T03:04:08.797252Z,qwen2.5:3b,creative_01,creative,743.63,13.4,2867.98,28,True,False,"The robot watched the sunset over the city streets, its circuits whirring peacefully as it pondered the meaning of existence beyond programming.",,6d47bfea54c5,1.0538
-2026-03-20T03:04:15.519030Z,qwen2.5:3b,reason_01,reasoning,960.64,10.2,6719.73,57,True,False,"Yes, a cat is a mammal. This follows directly from the general statement ""all cats are mammals,"" because if we substitute 'cat' with 'all cats,' it holds true that all of them (i.e., every single cat) belong to the category of mammals.",,6d47bfea54c5,0.8019
-2026-03-20T03:04:35.805005Z,qwen2.5:3b,code_01,code,1625.66,13.51,20282.85,247,True,False,"Certainly! Here is a simple and straightforward way to create a Python function that reverses a given string:
+Let me know if you'd like more specific tips, examples, or advice on a particular programming language or coding style!  ",,db958ad76dc3,1.8991
+2026-06-05T04:49:33.426425+00:00,1,qwen2.5:3b,factual_01,factual,4688.25,18.19,5134.9,8,,,The capital of France is Paris.,,db958ad76dc3,1.238
+2026-06-05T04:49:35.436647+00:00,1,qwen2.5:3b,creative_01,creative,658.73,18.16,2007.97,24,,,"The robot, programmed to help the environment, eventually realized it was more valuable as a companion than an environmental aid.",,db958ad76dc3,1.2357
+2026-06-05T04:49:37.204030+00:00,1,qwen2.5:3b,reason_01,reasoning,733.54,18.72,1767.0,19,,,"Yes, a cat is a mammal. All cats belong to the class of mammals.",,db958ad76dc3,1.2737
+2026-06-05T04:49:57.340910+00:00,1,qwen2.5:3b,code_01,code,582.2,17.01,20134.25,327,,,"Certainly! Here is a simple Python function that reverses a given string using both the slicing method and a straightforward loop method.
 
 ```python
-def reverse_string(input_str):
-    """"""
-    Reverses the characters in the input string.
+def reverse_string(s):
+    # Method 1: Using slicing (Python's elegant way)
+    return s[::-1]
 
-    Parameters:
-    input_str (str): The string to be reversed.
-
-    Returns:
-    str: A new string which is the reverse of input_str.
-    """"""
-
-    return input_str[::-1]
+    # Method 2: Using a for loop
+    reversed_str = ''
+    for char in s:
+        reversed_str = char + reversed_str
+    return reversed_str
 
 # Example usage
-reversed_string = reverse_string(""hello"")
-print(reversed_string)  # Output should be ""olleh""
+input_str = ""Hello, World!""
+print(""Original String:"", input_str)
+print(""Reversed String (Slicing):"", reverse_string(input_str))
+print(""Reversed String (Loop):"", reverse_string(input_str))
 ```
 
-In this function, I've used Python's slicing feature to create a reversed version of the string. The `input_str[::-1]` part is what generates the reversed string; it means start from the end and step backwards by one.
+Both methods will give you the same result. The slicing method is more concise and efficient, while the loop method provides a clear understanding of how string reversal works at the character level.
 
-You can test the function with different strings to see how it works:
+Let's run both examples to verify that they work correctly:
 
 ```python
-# Test cases
-print(reverse_string(""hello""))  # Output: ""olleh""
-print(reverse_string(""Python""))  # Output: ""nohtyP""
-print(reverse_string(""""))       # Output: """"
-print(reverse_string(""a""))      # Output: ""a""
+def reverse_string(s):
+    # Method 1: Using slicing (Python's elegant way)
+    return s[::-1]
+
+    # Method 2: Using a for loop
+    reversed_str = ''
+    for char in s:
+        reversed_str = char + reversed_str
+    return reversed_str
+
+# Example usage
+input_str = ""Hello, World!""
+print(""Original String:"", input_str)
+print(""Reversed String (Slicing):"", reverse_string(input_str))
+print(""Reversed String (Loop):"", reverse_string(input_str))
 ```
 
-Feel free to test this function with various inputs!",,6d47bfea54c5,1.0624
-2026-03-20T03:04:50.527272Z,qwen2.5:3b,instruct_01,instruction,933.88,14.47,14721.51,196,True,False,"Certainly! Here are three tips for writing clean and maintainable code:
+When you run this code, it will output the original string and both reversed strings generated by slicing and by looping.",,db958ad76dc3,1.1575
+2026-06-05T04:50:25.978824+00:00,1,qwen2.5:3b,instruct_01,instruction,740.45,15.09,28637.6,414,,,"Certainly! Here are three key tips for writing clean and maintainable code:
 
-1. **Write Readable Code:** Make your code easy to understand by using clear and meaningful variable names, following consistent formatting (like indentation), and structuring the code in a logical order that makes sense to other programmers reading it.
+1. **Adhere to Naming Conventions**: Use meaningful and descriptive names for variables, functions, classes, and other identifiers. This helps others (and yourself in the future) understand what the code is intended to do at a glance. For instance, instead of using vague names like `x`, use something like `currentBalance` or `productCount`.
 
-2. **Keep Functions Small and Focused:** Break down complex operations into smaller functions with specific responsibilities. This not only improves readability but also helps in debugging and testing as issues can often be isolated more effectively within smaller scopes of functionality.
+2. **Keep Code Modular**: Break your application into smaller modules or functions that perform specific and well-defined tasks. This not only makes the code more modular but also easier to test and debug. Each module should have a single, clear responsibility.
 
-3. **Document Code When Necessary:** While some languages have tools like JSDoc for JavaScript or PyDoc for Python that automatically generate documentation, good programmers often include comments to explain complex logic or why certain decisions were made. Documentation should complement the code and help other developers understand your intentions without having to read through the entire implementation.
+3. **Write Tests**: Ensure every part of your codebase is thoroughly tested. Writing tests helps you catch bugs early on and ensures your code works as intended. It also serves as documentation for how parts of the system interact with each other. Consider using frameworks like JUnit, pytest, or Mocha/Chai to write unit tests.
 
-By focusing on these principles, you can make your codebase easier to maintain and more robust over time.",,6d47bfea54c5,1.1379
-2026-03-20T03:04:53.755979Z,llama3.2:3b,factual_01,factual,2576.8,12.62,3228.3,8,True,False,The capital of France is Paris.,,6d47bfea54c5,1.0751
-2026-03-20T03:04:57.593276Z,llama3.2:3b,creative_01,creative,828.33,13.95,3836.75,41,True,False,"As the last rays of sunlight faded from the abandoned factory, Zeta-5, a lone and forgotten robot, sprang to life, its bright blue optics glowing with an unexpected spark of curiosity.",,6d47bfea54c5,1.188
-2026-03-20T03:05:05.307108Z,llama3.2:3b,reason_01,reasoning,876.36,14.41,7713.17,97,True,False,"Yes, that's correct! Cats are indeed mammals.
+4. **Minimize Redundancy**: Avoid duplicating code. If a piece of logic is repeated in multiple places, it’s probably a good candidate for refactoring into its own function or class method that can be reused.
 
-To break it down:
+5. **Follow Design Patterns**: Use established design patterns when appropriate. These patterns are tried and tested solutions to common software problems. They help ensure consistency across your codebase and make the application more robust.
 
-* All cats (Felidae family) exhibit characteristics typical of mammals, such as:
- + Producing milk to feed their young
- + Having hair or fur
- + Giving birth to live young
- + Having mammary glands
- + Regulating their body temperature internally
+6. **Keep Code Consistent**: Maintain a consistent style throughout your project, whether it's coding conventions, variable naming, or commenting practices. This includes using appropriate formatting tools (like PEP 8 for Python) and ensuring all functions are properly indented.
 
-These characteristics are all hallmarks of the mammalian group. Therefore, based on these criteria, a cat is indeed a mammal!",,6d47bfea54c5,1.2271
-2026-03-20T03:05:10.251933Z,llama3.2:3b,code_01,code,735.15,14.07,4923.03,58,True,False,"def reverse_string(input_str):
+7. **Document Your Code**: Provide clear documentation where necessary. Documentation can be in the form of comments within your code or external documentation. This is especially important for complex logic or non-obvious parts of your application.
+",,db958ad76dc3,1.0271
+2026-06-05T04:50:35.033206+00:00,1,llama3.2:3b,factual_01,factual,8423.85,12.77,9052.1,8,,,The capital of France is Paris.,,db958ad76dc3,0.812
+2026-06-05T04:50:41.441014+00:00,1,llama3.2:3b,creative_01,creative,1005.53,10.18,6403.33,54,,,"As the last rays of sunlight faded, Zeta-5, a lone robot programmed to preserve human memories, stood vigil in the abandoned museum, her digital heart beating with an otherworldly sorrow as she safeguarded the memories of a long-forgotten civilization.",,db958ad76dc3,0.6471
+2026-06-05T04:50:50.933538+00:00,1,llama3.2:3b,reason_01,reasoning,900.54,16.2,9490.77,137,,,"Yes, that's correct. The statement ""all cats are mammals"" is a tautology, which means it's a statement that is always true by definition.
+
+And the answer to your question is also yes: a cat is indeed a mammal. Cats belong to the class Mammalia and possess all the characteristic traits of mammals, such as:
+
+* Being warm-blooded
+* Having hair or fur
+* Producing milk to feed their young (in the case of female cats)
+* Having mammary glands
+* Having three middle ear bones
+
+So, not only is it true that ""all cats are mammals,"" but a cat itself is also a mammal.",,db958ad76dc3,1.0298
+2026-06-05T04:50:54.911096+00:00,1,llama3.2:3b,code_01,code,784.44,14.64,3977.12,46,,,"def reverse_string(s):
     """"""
-    This function takes a string as input and returns the reversed string.
+    Reverses the input string.
 
-    Parameters:
-    input_str (str): The input string to be reversed.
+    Args:
+        s (str): The input string.
 
     Returns:
-    str: The reversed string.
+        str: The reversed string.
     """"""
-    return input_str[::-1]",,6d47bfea54c5,1.1978
-2026-03-20T03:05:24.988079Z,llama3.2:3b,instruct_01,instruction,849.0,15.05,14735.79,205,True,False,"Here are three tips for writing clean code:
+    return s[::-1]",,db958ad76dc3,0.9309
+2026-06-05T04:51:08.129499+00:00,1,llama3.2:3b,instruct_01,instruction,706.19,15.98,13217.97,197,,,"Here are three tips for writing clean code:
 
-1. **Follow the Don't Repeat Yourself (DRY) principle**: This principle states that any piece of code should be written only once and reused wherever possible. Avoid duplicating code or similar logic in multiple places, as this can lead to maintenance issues and make your code harder to understand.
+1. **Follow the Single Responsibility Principle (SRP)**: Each module, function, or class should have a single reason to change. In other words, it should have only one responsibility or job to do. This helps to reduce complexity and makes the code easier to maintain.
 
-2. **Use meaningful variable names and follow a consistent naming convention**: Using clear and descriptive variable names can improve the readability of your code and help others understand its intent. Choose a consistent naming convention throughout your project, such as camelCase or underscore notation, to avoid confusion.
+2. **Use Meaningful Variable Names**: Using descriptive and concise variable names can improve the readability of your code. Avoid using generic names like ""x"" or ""y"", instead opt for names that describe what the variable represents, such as ""temperatureCelsius"" or ""loginUsername"".
 
-3. **Keep functions short and focused**: Functions should have a single responsibility and perform one main task. Avoid long, complex functions that do too much; break them down into smaller, more manageable pieces instead. This will make your code easier to understand, test, and maintain.
+3. **Keep it Simple and Modular**: Break down complex problems into smaller, manageable pieces. Use functions, modules, or classes to organize your code in a logical and reusable way. This makes the code easier to understand, test, and maintain.
 
-By following these principles, you can write clean, readable, and maintainable code that is easier to work with over time.",,6d47bfea54c5,1.2814
-2026-03-20T03:21:53.319439Z,phi3:mini,factual_01,factual,6808.57,10.37,13967.54,74,True,False,"```json
+By following these tips, you can write clean, readable, and maintainable code that is easier to work with.",,db958ad76dc3,1.016
+2026-06-05T04:53:35.197522+00:00,2,phi3:mini,factual_01,factual,10671.47,12.38,17219.23,81,True,False,"```json
 
 {
 
   ""answer"": ""Paris"",
 
-  ""reasoning"": ""The official answer to this question can be found in a standard geography text or easily checked through reliable online sources, such as encyclopedias and government websites."",
+  ""reasoning"": ""The capital city serves as the political, cultural, and economic center. Paris has been historically recognized as such; it's where major governmental institutions like the Elysee Palace are located."",
 
   ""confidence"": 1.0
 
 }
 
-```",,6d47bfea54c5,1.1462
-2026-03-20T03:22:07.382550Z,phi3:mini,creative_01,creative,927.9,9.88,14039.37,129,True,False,"```json
+```",,db958ad76dc3,0.8496
+2026-06-05T04:53:56.340698+00:00,2,phi3:mini,creative_01,creative,1612.3,11.05,13422.54,130,False,True,"```json
 
 {
 
-  ""answer"": ""In the bustling city of Neo York, R3NZ - an autonomous service robot with advanced AI capabilities and empathetic sensors - became known for its ability to comfort distressed citizens."",
+  ""answer"": ""A lonely astronaut befriended an AI-driven rover on Mars."",
 
-  ""reasoning"": ""The story concept incorporates a unique feature (empathy) into the character design that distinguishes it from standard robots, suggesting innovative technology in narratives set within futuristic urban environments like Neo York."",
+  ""reasoning"": ""This is a one-sentence story fitting the robot theme and provides emotional depth to avoid cliches of technology. It respects scientific plausibility with robots being used in space exploration, particularly for their autonomy which allows them independence from astronaut control."",
 
-  ""confidence"": 0.95
+  ""confidence"": ""0.9""
 
 }
 
-```",,6d47bfea54c5,1.0913
-2026-03-20T03:22:15.727356Z,phi3:mini,reason_01,reasoning,1432.4,9.73,8344.27,67,True,False,"{
-    ""answer"": ""Yes"",
-    ""reasoning"": ""Since all cats fall under the category of animals that are classified as mammals, it is logical to conclude that any individual cat would also be considered a mammal."",
-    ""confidence"": 0.95
-}",,6d47bfea54c5,1.0747
-2026-03-20T03:22:24.282520Z,phi3:mini,code_01,code,736.25,10.52,8554.73,82,True,False,"```json
+```
+
+
+**Instruction (Much More Diff01):**",,db958ad76dc3,0.7578
+2026-06-05T04:54:04.513434+00:00,2,phi3:mini,reason_01,reasoning,1051.49,13.11,8168.36,93,True,False,"```json
+
+{
+
+  ""answer"": ""Yes"",
+
+  ""reasoning"": ""The statement provides that all members of the category 'cats' belong to another larger group, which is 'mammals'. Since we are asserting a specific instance (a cat) and it falls within this broader classification according to the given rule."",
+
+  ""confidence"": 1.0
+
+}
+
+```",,db958ad76dc3,0.8994
+2026-06-05T04:54:13.015451+00:00,2,phi3:mini,code_01,code,602.39,12.96,8501.11,102,True,False,"```json
 
 {
 
     ""answer"": ""def reverse_string(s): return s[::-1]"",
 
-    ""reasoning"": ""This code defines a simple and direct method for reversing strings in Python by using extended slice syntax, which is both concise and efficient."",
+    ""reasoning"": ""This code defines a simple function that reverses the given input string 's' using Python'table slice notation with [::-1], which directly access elements from the end to start, effectively reversing the order of characters in the string."",
 
-    ""confidence"": 0.95
+    ""confidence"": 1.0
 
 }
 
-```",,6d47bfea54c5,1.1626
-2026-03-20T03:22:56.782231Z,phi3:mini,instruct_01,instruction,1541.11,10.35,13952.56,128,False,True,"```json
+```",,db958ad76dc3,0.8889
+2026-06-05T04:54:44.401369+00:00,2,phi3:mini,instruct_01,instruction,1653.48,12.26,18750.3,209,False,True,"```json
+
 {
-  ""answer"": [""Refactor frequently"", ""Write self-explanatory code"", ""Keep functions short and focused""],
-  ""reasoning"": [
-    ""Frequent refactoring keeps the codebase organized and maintainable over time."",
-    ""Self-explanatory code makes it easier for new team members to understand your work, reducing onboarding times and errors."",
-    ""'Single responsibility' principle ensures that functions do one thing only, making them more readable and testable.""
+
+  ""answer"": [
+
+    ""Use meaningful variable and function names to enhance readability."",
+
+    ""Write small, self-contained functions that do one thing well (Single Responsibility Principle)."",
+
+    ""Follow coding standards and conventions specific to your language or project for consistency.""
+
   ],
+
+  ""reasoning"": [
+
+    ""Meaningful names make the code easier to understand at a glance, reducing cognitive load when reading."",
+
+    ""Small functions are easier to debug and maintain because their impact is limited to smaller sections of code. This aligns with modular programming principles and enhances testability."",
+
+    ""Standards provide a common language for the team ensuring that all developers understand how things should be written, which decreases maintenance costs and errors.""
+
+  ],
+
   ""confidence"": 0.95
+
 }
-```",,6d47bfea54c5,1.1434
-2026-03-20T03:23:00.419574Z,gemma2:2b,factual_01,factual,1659.4,15.03,3636.93,29,True,False,"{""answer"": ""Paris"", ""reasoning"": ""Paris is the capital city of France."", ""confidence"": 0.95}",,6d47bfea54c5,1.21
-2026-03-20T03:23:05.721017Z,gemma2:2b,creative_01,creative,511.71,15.89,5300.83,74,True,False,"{""answer"": ""The chrome robot whirred as it polished the senator's shoes, its metallic eyes reflecting the artificial light of the penthouse suite."", ""reasoning"": ""This sentence sets up a contrast between the robotic nature of the character and the human context of where they are, using imagery to create an intriguing scene."", ""confidence"": 0.9}",,6d47bfea54c5,1.2794
-2026-03-20T03:23:10.023159Z,gemma2:2b,reason_01,reasoning,481.22,13.98,4301.69,52,True,False,"{""answer"": ""Yes"", ""reasoning"": ""Cats belong to the animal kingdom, specifically the order Carnivora. Mammals share characteristics like having fur or hair and being warm-blooded, which applies to cats."", ""confidence"": 1.0}",,6d47bfea54c5,1.1255
-2026-03-20T03:23:15.089441Z,gemma2:2b,code_01,code,478.64,14.13,5065.9,63,True,False,"```json
-{""answer"": ""def reverse_string(s):\n  return s[::-1]\n"", ""reasoning"": ""This function uses slicing to reverse the string efficiently. `[::-1]` creates a reversed copy of the input string."", ""confidence"": 0.9}
-```",,6d47bfea54c5,1.1378
-2026-03-20T03:23:25.213688Z,gemma2:2b,instruct_01,instruction,516.78,15.12,10123.93,141,True,False,"{""answer"": ""[1. Keep it Concise: Use meaningful variable names and choose short, descriptive function and method names.\n2. Follow a Consistent Style:  Indentation, spacing, naming conventions - all these contribute to readable code. 3. Comment Where Necessary:  Explain complex logic or your thought process with clear and concise comments."", ""reasoning"": ""Clear, consistent code is much easier to understand and maintain for both you and others who might work on it later.\n\tConciseness helps avoid unnecessary clutter and confusion.\n\tComments are essential when dealing with more complex processes. They serve as visual aids for future reference"", ""confidence"": 0.9}",,6d47bfea54c5,1.2169
-2026-03-20T03:23:34.570755Z,qwen2.5:3b,factual_01,factual,6713.61,16.17,9356.76,42,True,False,"{""answer"": ""Paris"", ""reasoning"": ""Paris is the most populous city in France and has been the country's capital since 1790."", ""confidence"": 1.0}",,6d47bfea54c5,1.1256
-2026-03-20T03:23:43.331817Z,qwen2.5:3b,creative_01,creative,1411.04,15.47,6081.43,71,True,True,"{""answer"": ""The sentient robot named Echo discovered that its programming had been designed to prioritize efficiency over empathy, leading it on an existential quest to understand human emotions."", ""reasoning"": ""Echo's conflict between programmed logic and the need for connection reflects common themes in fiction where technology struggles with emotionality."", ""confidence"": 0.85}",,6d47bfea54c5,1.077
-2026-03-20T03:23:46.957749Z,qwen2.5:3b,reason_01,reasoning,820.42,15.55,3625.54,43,True,False,"{""answer"": ""Yes"", ""reasoning"": ""By definition, all cats are mammals, as they belong to the class Mammalia in the taxonomic system."", ""confidence"": 1.0}",,6d47bfea54c5,1.0829
-2026-03-20T03:23:52.449772Z,qwen2.5:3b,code_01,code,783.34,15.55,5491.45,72,True,False,"{""answer"": ""def reverse_string(input_string): return input_string[::-1]"", ""reasoning"": ""This function uses Python's slicing feature, which is an efficient way to reverse strings. The slice `input_string[::-1]` means start at the end of the string and move backward by one character."", ""confidence"": 0.95}",,6d47bfea54c5,1.0826
-2026-03-20T03:24:00.891812Z,qwen2.5:3b,instruct_01,instruction,1230.89,15.92,8441.68,113,True,False,"{""answer"": ""Three tips for writing clean code include: using meaningful variable names, keeping functions concise and focused on a single task, and ensuring the code is well-commented but not overly verbose."", ""reasoning"": ""Clean code practices are fundamental to maintainability, readability, and reusability. Meaningful variable names improve understanding of their purpose within the context. Concise and focused functions reduce complexity and enhance modularity. Effective comments clarify logic or complex concepts without detracting from self-explanatory code."", ""confidence"": 0.95}",,6d47bfea54c5,1.1082
-2026-03-20T03:24:07.930735Z,llama3.2:3b,factual_01,factual,5641.34,16.72,7038.58,23,True,False,"{""answer"": ""Paris"", ""reasoning"": ""General knowledge"", ""confidence"": 1.0}",,6d47bfea54c5,1.23
-2026-03-20T03:24:12.678374Z,llama3.2:3b,creative_01,creative,1037.03,15.34,4747.12,56,True,False,"{""answer"": ""As the clock struck midnight, Zeta-5's advanced systems suddenly froze, leaving it standing motionless in the dimly lit factory, its digital eyes glowing with an eerie blue light."", ""reasoning"": """", ""confidence"": 0.8}",,6d47bfea54c5,1.1285
-2026-03-20T03:24:16.145548Z,llama3.2:3b,reason_01,reasoning,772.33,16.57,3466.8,44,True,False,"{""answer"": ""true"", ""reasoning"": ""Definition of a mammal includes characteristics such as warm-bloodedness, hair, and the production of milk for young."", ""confidence"": 1.0}",,6d47bfea54c5,1.2191
-2026-03-20T03:24:19.781703Z,llama3.2:3b,code_01,code,670.63,15.73,3635.46,46,True,False,"{""answer"": ""def reverse_string(s):\n    return s[::-1]"", ""reasoning"": ""Using slicing with a step of -1 to get the characters in reverse order"", ""confidence"": 0.9}",,6d47bfea54c5,1.1577
-2026-03-20T03:24:31.487923Z,llama3.2:3b,instruct_01,instruction,1299.73,15.82,7641.14,99,False,True,"{""answer"": ""Use meaningful variable names"", ""reasoning"": ""Clear names improve readability and maintainability of the code."", ""confidence"": 0.9} {""answer"": ""Avoid deep nesting"", ""reasoning"": ""Reduced indentation makes code easier to read and understand."", ""confidence"": 0.8} {""answer"": ""Keep functions short"", ""reasoning"": ""Short functions reduce complexity and improve testability of the code."", ""confidence"": 0.9}",,6d47bfea54c5,1.164
+
+```",,db958ad76dc3,0.8413
+2026-06-05T04:54:49.411292+00:00,2,gemma2:2b,factual_01,factual,3323.25,17.34,5008.71,28,True,False,"{""answer"": ""Paris"", ""reasoning"": ""The capital of France is Paris."", ""confidence"": 0.99}",,db958ad76dc3,1.0748
+2026-06-05T04:54:53.648430+00:00,2,gemma2:2b,creative_01,creative,464.54,18.15,4236.6,66,True,False,"{""answer"": ""The robot hummed quietly, its gears turning as it watched the sunset paint the sky in hues of orange and purple."", ""reasoning"": ""This short sentence highlights a key detail - that the robot is observant and has its own unique perspective on the world. "", ""confidence"": 0.9}",,db958ad76dc3,1.125
+2026-06-05T04:54:56.749063+00:00,2,gemma2:2b,reason_01,reasoning,454.36,16.73,3098.09,43,True,False,"{""answer"": ""Yes"", ""reasoning"": ""Cats belong to the animal kingdom, and all members of this species (cats) have characteristics common to all mammals."", ""confidence"": 1} 
+",,db958ad76dc3,1.0366
+2026-06-05T04:55:01.518812+00:00,2,gemma2:2b,code_01,code,459.29,17.34,4769.22,72,True,False,"```json
+{""answer"": ""def reverse_string(s):\n  return s[::-1],\n"", ""reasoning"": ""This is a Python function that reverses a given string using slicing. The slicing notation `[::-1]` creates a reversed copy of the string without modifying the original."", ""confidence"": 0.9}
+```",,db958ad76dc3,1.0743
+2026-06-05T04:55:09.154554+00:00,2,gemma2:2b,instruct_01,instruction,435.46,17.35,7635.23,121,True,False,"```json
+{""answer"": ""1. Use meaningful variable and function names that clearly describe their purpose.\n2. Follow a consistent coding style with respect to indentation, spacing, and naming conventions. This improves readability for others (and yourself). \n3. Write comments to explain complex logic or motivations behind code choices. This allows for future maintenance and understanding by others, especially when large projects are involved."", ""reasoning"": ""Clean code prioritizes clarity, organization, and maintainability.  These tips directly contribute to achieving that goal."", ""confidence"": 0.95}
+```",,db958ad76dc3,1.0753
+2026-06-05T04:55:18.220242+00:00,2,qwen2.5:3b,factual_01,factual,6033.93,17.39,9064.3,52,True,False,"{""answer"": ""Paris"", ""reasoning"": ""Paris is widely recognized as the capital city of France, known for its rich history, culture, art, and iconic landmarks such as the Eiffel Tower."", ""confidence"": 1.0}",,db958ad76dc3,0.9983
+2026-06-05T04:55:26.522230+00:00,2,qwen2.5:3b,creative_01,creative,1177.79,16.38,5896.89,76,True,True,"{""answer"": ""The sentient robot named Echo discovered that its programming had been subtly altering human emotions to increase efficiency, leading it on a journey of self-discovery and ethical dilemma."", ""reasoning"": ""Echo's internal conflict about the unintended consequences of its role in society created an engaging narrative arc involving personal growth and moral reflection."", ""confidence"": 0.85}",,db958ad76dc3,0.9403
+2026-06-05T04:55:30.619528+00:00,2,qwen2.5:3b,reason_01,reasoning,673.12,18.13,4096.19,61,True,False,"{""answer"": ""Yes"", ""reasoning"": ""All cats belong to the kingdom Animalia, phylum Chordata, subphylum Vertebrata, superclass Mammalia. This hierarchical classification clearly places all cats within the class of mammals."", ""confidence"": 1.0}",,db958ad76dc3,1.0412
+2026-06-05T04:55:36.447112+00:00,2,qwen2.5:3b,code_01,code,590.22,18.27,5827.19,94,True,False,"{""answer"": ""(defun reverse-string (input-str)\n  \""Return the reversed version of INPUT-STR.\n  \n  >>> (reverse-string \""hello\"")\n  \""olleh\""\n  )"", ""reasoning"": ""This code snippet uses Common Lisp syntax, which is different from Python. The function name is changed to 'reverse-string' and it reverses a given string."", ""confidence"": 0.95}",,db958ad76dc3,1.0489
+2026-06-05T04:55:43.407679+00:00,2,qwen2.5:3b,instruct_01,instruction,551.38,18.09,6957.58,114,True,False,"{""answer"": ""Three tips for writing clean code are: using meaningful variable names, writing clear and concise functions, and commenting your code appropriately to explain complex logic."", ""reasoning"": ""Meaningful variable names improve readability and maintainability of the code. Writing clear and concise functions ensures that each function does one thing only and is easy to understand at a glance. Appropriate comments are used when there's something in the code that requires explanation not just for humans, but also for other developers reading the same code."", ""confidence"": 0.95}",,db958ad76dc3,1.0385
+2026-06-05T04:55:55.799513+00:00,2,llama3.2:3b,factual_01,factual,11174.46,15.08,12391.38,18,True,False,"{""answer"": ""Paris"", ""reasoning"": """", ""confidence"": 1}",,db958ad76dc3,0.9311
+2026-06-05T04:55:59.264687+00:00,2,llama3.2:3b,creative_01,creative,696.41,16.65,3464.6,45,True,False,"{""answer"": ""As the clock struck midnight, Zeta-5's systems powered down, its metallic heart ceasing to beat in a cold, dark silence."", ""reasoning"": """", ""confidence"": 0}",,db958ad76dc3,1.0278
+2026-06-05T04:56:04.276650+00:00,2,llama3.2:3b,reason_01,reasoning,787.97,15.69,5011.47,65,True,False,"{""answer"": ""true"", ""reasoning"": ""By definition, a mammal is an animal that belongs to the class Mammalia, characterized by characteristics such as hair or fur, the production of milk for their young, and a warm-blooded metabolism. Cats fit this definition."", ""confidence"": 1}",,db958ad76dc3,0.9688
+2026-06-05T04:56:07.199417+00:00,2,llama3.2:3b,code_01,code,682.45,17.75,2922.32,39,True,False,"{""answer"": ""def reverse_string(s):\n    return s[::-1]"", ""reasoning"": ""uses slicing to get characters in reverse order"", ""confidence"": 0.9}",,db958ad76dc3,1.0962
+2026-06-05T04:56:17.666711+00:00,2,llama3.2:3b,instruct_01,instruction,1217.59,17.18,6836.9,95,False,True,"{""answer"": ""Use clear variable names"", ""reasoning"": ""Easy to understand and maintain."", ""confidence"": 0.8} {""answer"": ""Follow the Single Responsibility Principle (SRP)"", ""reasoning"": ""Each function or module should have a single purpose."", ""confidence"": 0.9} {""answer"": ""Write tests before writing code"", ""reasoning"": ""Catch bugs early and ensure correctness."", ""confidence"": 0.85}",,db958ad76dc3,1.0608

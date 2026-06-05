@@ -11,11 +11,11 @@ import asyncio
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.csv_writer import CSVWriter
-from backend.ollama_client import OllamaClient
+from backend.ollama_client import InferenceMetrics, OllamaClient
 from backend.schemas import ModelResponse
 from backend.system_profile import capture_and_save, load_profile
 from backend.temperature import run_sweep as run_phase3_sweep
@@ -31,6 +31,7 @@ RESULTS_CSV = DATA_DIR / "results.csv"
 # CSV columns for results.csv (Phase 1 + Phase 2)
 RESULTS_HEADER = [
     "timestamp",
+    "phase",
     "model",
     "prompt_id",
     "prompt_category",
@@ -108,6 +109,76 @@ async def run_calibration(
     return baseline
 
 
+def _result_row(
+    model: str,
+    prompt_id: str,
+    prompt_category: str,
+    ttft_ms: float | str,
+    tps: float | str,
+    latency_ms: float | str,
+    token_count: int | str,
+    valid_json: bool | str,
+    retry_used: bool | str,
+    raw_output: str,
+    error: str,
+    machine_id: str = "",
+    normalised_tps: float | str = "",
+    phase: int | str = "",
+) -> dict:
+    """Build a single results.csv row dict."""
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "phase": phase,
+        "model": model,
+        "prompt_id": prompt_id,
+        "prompt_category": prompt_category,
+        "ttft_ms": ttft_ms,
+        "tokens_per_second": tps,
+        "total_latency_ms": latency_ms,
+        "token_count": token_count,
+        "valid_json": valid_json,
+        "retry_used": retry_used,
+        "raw_output": raw_output,
+        "error": error,
+        "machine_id": machine_id,
+        "normalised_tps": normalised_tps,
+    }
+
+
+def _row_from_metrics(
+    metrics: InferenceMetrics,
+    model_name: str,
+    prompt_id: str,
+    prompt_category: str,
+    valid_json: bool | str,
+    retry_used: bool | str,
+    machine_id: str,
+    baseline_tps: dict[str, float],
+    phase:int,
+    error: str = "",
+) -> dict:
+    """Build a results.csv row from an InferenceMetrics result."""
+    base = baseline_tps.get(model_name) or 1.0
+    tps_val = metrics.tokens_per_second
+    norm = round(tps_val / base, 4) if tps_val else ""
+    return _result_row(
+        model_name,
+        prompt_id,
+        prompt_category,
+        ttft_ms=round(metrics.ttft_ms, 2),
+        tps=round(tps_val, 2),
+        latency_ms=round(metrics.total_latency_ms, 2),
+        token_count=metrics.token_count,
+        valid_json=valid_json,
+        retry_used=retry_used,
+        raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
+        error=error or metrics.error or "",
+        machine_id=machine_id,
+        normalised_tps=norm,
+        phase=phase,
+    )
+
+
 async def run_phase1(
     client: OllamaClient,
     csv_writer: CSVWriter,
@@ -155,33 +226,28 @@ async def run_phase1(
                     tps="",
                     latency_ms="",
                     token_count="",
-                    valid_json=False,
-                    retry_used=False,
+                    valid_json="",
+                    retry_used="",
                     raw_output="",
                     error=str(e),
                     machine_id=machine_id,
                     normalised_tps="",
+                    phase=1,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
                 continue
 
-            base = baseline_tps.get(model_name) or 1.0
-            norm_tps = round(metrics.tokens_per_second / base, 4) if base else ""
-            row = _result_row(
-                metrics.model,
-                metrics.prompt_id,
-                metrics.prompt_category,
-                ttft_ms=round(metrics.ttft_ms, 2),
-                tps=round(metrics.tokens_per_second, 2),
-                latency_ms=round(metrics.total_latency_ms, 2),
-                token_count=metrics.token_count,
-                valid_json=True,
-                retry_used=False,
-                raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
-                error=metrics.error or "",
+            row = _row_from_metrics(
+                metrics,
+                model_name,
+                prompt_id,
+                prompt_category,
+                valid_json="",
+                retry_used="",
                 machine_id=machine_id,
-                normalised_tps=norm_tps,
+                baseline_tps=baseline_tps,
+                phase=1,
             )
 
             if dry_run:
@@ -222,7 +288,7 @@ def _validate_phase2_response(raw_text: str) -> tuple[bool, ModelResponse | None
         parsed = json.loads(raw_stripped)
         validated = ModelResponse.model_validate(parsed)
         return True, validated
-    except (json.JSONDecodeError, Exception):
+    except Exception:
         return False, None
 
 
@@ -275,9 +341,9 @@ async def run_phase2(
                     prompt_id,
                 )
                 row = _result_row(
-                    model_name,
-                    prompt_id,
-                    prompt_category,
+                    model_name = model_name,
+                    prompt_id = prompt_id,
+                    prompt_category = prompt_category,
                     ttft_ms="",
                     tps="",
                     latency_ms="",
@@ -288,6 +354,7 @@ async def run_phase2(
                     error=str(e),
                     machine_id=machine_id,
                     normalised_tps="",
+                    phase=2,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -297,23 +364,10 @@ async def run_phase2(
                 continue
 
             if metrics.error:
-                base = baseline_tps.get(model_name) or 1.0
-                tps_val = metrics.tokens_per_second
-                norm = round(tps_val / base, 4) if base and tps_val else ""
-                row = _result_row(
-                    model_name,
-                    prompt_id,
-                    prompt_category,
-                    ttft_ms=round(metrics.ttft_ms, 2),
-                    tps=round(metrics.tokens_per_second, 2),
-                    latency_ms=round(metrics.total_latency_ms, 2),
-                    token_count=metrics.token_count,
-                    valid_json=False,
-                    retry_used=False,
-                    raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
-                    error=metrics.error,
-                    machine_id=machine_id,
-                    normalised_tps=norm,
+                row = _row_from_metrics(
+                    metrics, model_name, prompt_id, prompt_category,
+                    valid_json=False, retry_used=False,
+                    machine_id=machine_id, baseline_tps=baseline_tps, phase=2,
                 )
                 if dry_run:
                     print(json.dumps(row, indent=2))
@@ -323,23 +377,10 @@ async def run_phase2(
 
             valid, parsed = _validate_phase2_response(metrics.raw_text)
             if valid:
-                base = baseline_tps.get(model_name) or 1.0
-                tps_val = metrics.tokens_per_second
-                norm = round(tps_val / base, 4) if base and tps_val else ""
-                row = _result_row(
-                    model_name,
-                    prompt_id,
-                    prompt_category,
-                    ttft_ms=round(metrics.ttft_ms, 2),
-                    tps=round(metrics.tokens_per_second, 2),
-                    latency_ms=round(metrics.total_latency_ms, 2),
-                    token_count=metrics.token_count,
-                    valid_json=True,
-                    retry_used=False,
-                    raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
-                    error="",
-                    machine_id=machine_id,
-                    normalised_tps=norm,
+                row = _row_from_metrics(
+                    metrics, model_name, prompt_id, prompt_category,
+                    valid_json=True, retry_used=False,
+                    machine_id=machine_id, baseline_tps=baseline_tps, phase=2,
                 )
                 if dry_run:
                     print(json.dumps(row, indent=2))
@@ -359,23 +400,11 @@ async def run_phase2(
                 )
             except Exception as e:
                 logger.warning("Phase 2 retry failed (exception) %s / %s: %s", model_name, prompt_id, e)
-                base = baseline_tps.get(model_name) or 1.0
-                tps_val = metrics.tokens_per_second
-                norm = round(tps_val / base, 4) if base and tps_val else ""
-                row = _result_row(
-                    model_name,
-                    prompt_id,
-                    prompt_category,
-                    ttft_ms=round(metrics.ttft_ms, 2),
-                    tps=round(metrics.tokens_per_second, 2),
-                    latency_ms=round(metrics.total_latency_ms, 2),
-                    token_count=metrics.token_count,
-                    valid_json=False,
-                    retry_used=True,
-                    raw_output=metrics.raw_text[:2000] if metrics.raw_text else "",
+                row = _row_from_metrics(
+                    metrics, model_name, prompt_id, prompt_category,
+                    valid_json=False, retry_used=True,
+                    machine_id=machine_id, baseline_tps=baseline_tps, phase=2,
                     error=str(e),
-                    machine_id=machine_id,
-                    normalised_tps=norm,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -384,23 +413,10 @@ async def run_phase2(
                 continue
 
             if metrics_retry.error:
-                base = baseline_tps.get(model_name) or 1.0
-                tps_val = metrics_retry.tokens_per_second
-                norm = round(tps_val / base, 4) if base and tps_val else ""
-                row = _result_row(
-                    model_name,
-                    prompt_id,
-                    prompt_category,
-                    ttft_ms=round(metrics_retry.ttft_ms, 2),
-                    tps=round(metrics_retry.tokens_per_second, 2),
-                    latency_ms=round(metrics_retry.total_latency_ms, 2),
-                    token_count=metrics_retry.token_count,
-                    valid_json=False,
-                    retry_used=True,
-                    raw_output=metrics_retry.raw_text[:2000] if metrics_retry.raw_text else "",
-                    error=metrics_retry.error,
-                    machine_id=machine_id,
-                    normalised_tps=norm,
+                row = _row_from_metrics(
+                    metrics_retry, model_name, prompt_id, prompt_category,
+                    valid_json=False, retry_used=True,
+                    machine_id=machine_id, baseline_tps=baseline_tps, phase=2,
                 )
                 if not dry_run:
                     csv_writer.append_row(RESULTS_CSV, row)
@@ -409,23 +425,10 @@ async def run_phase2(
                 continue
 
             valid_retry, _ = _validate_phase2_response(metrics_retry.raw_text)
-            base = baseline_tps.get(model_name) or 1.0
-            tps_val = metrics_retry.tokens_per_second
-            norm = round(tps_val / base, 4) if base and tps_val else ""
-            row = _result_row(
-                model_name,
-                prompt_id,
-                prompt_category,
-                ttft_ms=round(metrics_retry.ttft_ms, 2),
-                tps=round(metrics_retry.tokens_per_second, 2),
-                latency_ms=round(metrics_retry.total_latency_ms, 2),
-                token_count=metrics_retry.token_count,
-                valid_json=valid_retry,
-                retry_used=True,
-                raw_output=metrics_retry.raw_text[:2000] if metrics_retry.raw_text else "",
-                error="",
-                machine_id=machine_id,
-                normalised_tps=norm,
+            row = _row_from_metrics(
+                metrics_retry, model_name, prompt_id, prompt_category,
+                valid_json=valid_retry, retry_used=True,
+                machine_id=machine_id, baseline_tps=baseline_tps, phase=2,
             )
             if dry_run:
                 print(json.dumps(row, indent=2))
@@ -437,40 +440,6 @@ async def run_phase2(
                 model_name,
                 prompt_id,
             )
-
-
-def _result_row(
-    model: str,
-    prompt_id: str,
-    prompt_category: str,
-    ttft_ms: float | str,
-    tps: float | str,
-    latency_ms: float | str,
-    token_count: int | str,
-    valid_json: bool,
-    retry_used: bool,
-    raw_output: str,
-    error: str,
-    machine_id: str = "",
-    normalised_tps: float | str = "",
-) -> dict:
-    """Build a single results.csv row dict."""
-    return {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "model": model,
-        "prompt_id": prompt_id,
-        "prompt_category": prompt_category,
-        "ttft_ms": ttft_ms,
-        "tokens_per_second": tps,
-        "total_latency_ms": latency_ms,
-        "token_count": token_count,
-        "valid_json": valid_json,
-        "retry_used": retry_used,
-        "raw_output": raw_output,
-        "error": error,
-        "machine_id": machine_id,
-        "normalised_tps": normalised_tps,
-    }
 
 
 async def check_ollama(client: OllamaClient) -> bool:

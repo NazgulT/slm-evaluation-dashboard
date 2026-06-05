@@ -92,9 +92,18 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
     refresh()
-    const id = setInterval(refresh, POLL_INTERVAL_MS)
-    return () => clearInterval(id)
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') refresh()
+    }, POLL_INTERVAL_MS)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [refresh])
 
   const handleRun = async (phase) => {
@@ -186,12 +195,16 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-stone-400">
+              <label
+                htmlFor="csv-upload"
+                className="flex items-center gap-2 text-sm text-stone-400"
+              >
                 Compare with
                 <input
+                  id="csv-upload"
                   type="file"
                   accept=".csv"
-                  className="hidden"
+                  className="sr-only"
                   onChange={async (e) => {
                     const f = e.target.files?.[0]
                     if (!f) return
@@ -205,7 +218,7 @@ export default function App() {
                     e.target.value = ''
                   }}
                 />
-                <span className="cursor-pointer rounded bg-stone-700 px-3 py-1.5 text-stone-200 hover:bg-stone-600">
+                <span aria-hidden="true" className="cursor-pointer rounded bg-stone-700 px-3 py-1.5 text-stone-200 hover:bg-stone-600">
                   Upload results.csv
                 </span>
               </label>

@@ -8,7 +8,7 @@ data/temperature_runs.csv. Config-driven via config/temperature.json.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.csv_writer import CSVWriter
@@ -105,6 +105,37 @@ async def run_sweep(
         logger.warning("No models or prompts to run for Phase 3")
         return
 
+    if dry_run:
+        model_cfg = model_list[0]
+        prompt_cfg = prompt_list[0]
+        temp = temperatures[0]
+        model_name = model_cfg.get("name", "")
+        prompt_id = prompt_cfg.get("id", "")
+        prompt_category = prompt_cfg.get("category", "")
+        prompt_text = prompt_cfg.get("text", "")
+        logger.info("Phase 3 dry run: %s / %s / temp=%s run 1", model_name, prompt_id, temp)
+        try:
+            metrics = await client.generate(
+                model=model_name,
+                prompt=prompt_text,
+                prompt_id=prompt_id,
+                prompt_category=prompt_category,
+                temperature=temp,
+            )
+            response_text = "" if metrics.error else (metrics.raw_text or "")
+        except Exception as e:
+            logger.exception("Phase 3 dry run failed: %s", e)
+            response_text = ""
+        j = mean_pairwise_jaccard([response_text])
+        print(json.dumps({
+            "model": model_name,
+            "prompt_id": prompt_id,
+            "temperature": temp,
+            "runs": 1,
+            "jaccard_similarity": round(j, 4),
+        }, indent=2))
+        return
+
     for model_cfg in model_list:
         model_name = model_cfg.get("name", "")
         for prompt_cfg in prompt_list:
@@ -116,11 +147,6 @@ async def run_sweep(
                 responses: list[str] = []
 
                 for run_index in range(1, n_runs + 1):
-                    if dry_run and (model_cfg != model_list[0] or prompt_cfg != prompt_list[0] or temp != temperatures[0] or run_index > 1):
-                        continue
-                    if dry_run:
-                        logger.info("Phase 3 dry run: %s / %s / temp=%s run %s", model_name, prompt_id, temp, run_index)
-
                     try:
                         metrics = await client.generate(
                             model=model_name,
@@ -136,25 +162,12 @@ async def run_sweep(
                         )
                         response_text = ""
                     else:
-                        response_text = metrics.raw_text or ""
-                        if metrics.error:
-                            response_text = ""
+                        response_text = "" if metrics.error else (metrics.raw_text or "")
 
                     responses.append(response_text)
 
-                if dry_run and responses:
-                    j = mean_pairwise_jaccard(responses)
-                    print(json.dumps({
-                        "model": model_name,
-                        "prompt_id": prompt_id,
-                        "temperature": temp,
-                        "runs": len(responses),
-                        "jaccard_similarity": round(j, 4),
-                    }, indent=2))
-                    return
-
                 jaccard = mean_pairwise_jaccard(responses)
-                ts = datetime.utcnow().isoformat() + "Z"
+                ts = datetime.now(timezone.utc).isoformat()
 
                 for run_index, response_text in enumerate(responses, start=1):
                     row = {
@@ -164,7 +177,7 @@ async def run_sweep(
                         "prompt_category": prompt_category,
                         "temperature": round(temp, 2),
                         "run_index": run_index,
-                        "response_text": (response_text[:5000] if response_text else ""),
+                        "response_text": response_text[:5000] if response_text else "",
                         "jaccard_similarity": round(jaccard, 4),
                     }
                     csv_writer.append_row(TEMPERATURE_CSV, row)

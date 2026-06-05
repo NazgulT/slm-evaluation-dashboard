@@ -6,7 +6,6 @@ and temperature variance experiments.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,9 +38,9 @@ class InferenceResult(BaseModel):
     # Phase 2 fields (optional for Phase 1)
     valid_json: bool = True
     retry_used: bool = False
-    response: Optional[ModelResponse] = None
+    response: ModelResponse | None = None
     raw_output: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # --- Phase 3: Temperature variance ---
@@ -67,12 +66,12 @@ class RunStatus(BaseModel):
     """Current evaluation run status."""
 
     status: str  # idle | running | done
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class ModelInfo(BaseModel):
     """Model metadata from config or Ollama."""
 
     name: str
-    display_name: Optional[str] = None
-    parameters: Optional[str] = None
+    display_name: str | None = None
+    parameters: str | None = None

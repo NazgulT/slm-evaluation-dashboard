@@ -45,26 +45,25 @@ def _get_gpu_info() -> dict:
     """Detect GPU presence and VRAM. Tries nvidia-smi, system_profiler (macOS)."""
     out = {"present": False, "model": "", "vram_gb": None}
     # Try nvidia-smi
-    if not out["present"]:
-        try:
-            r = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if r.returncode == 0 and r.stdout.strip():
-                parts = r.stdout.strip().split("\n")[0].split(", ")
-                if len(parts) >= 1:
-                    out["present"] = True
-                    out["model"] = parts[0].strip()
-                if len(parts) >= 2:
-                    try:
-                        out["vram_gb"] = round(float(parts[1].strip()) / 1024, 2)
-                    except (ValueError, TypeError):
-                        pass
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
-            pass
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            parts = r.stdout.strip().split("\n")[0].split(", ")
+            if len(parts) >= 1:
+                out["present"] = True
+                out["model"] = parts[0].strip()
+            if len(parts) >= 2:
+                try:
+                    out["vram_gb"] = round(float(parts[1].strip()) / 1024, 2)
+                except (ValueError, TypeError):
+                    pass
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass
 
     # Try system_profiler on macOS
     if not out["present"] and platform.system() == "Darwin":

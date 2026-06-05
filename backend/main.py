@@ -7,84 +7,87 @@ Routes: GET /models, POST /run, GET /results, GET /status.
 
 import asyncio
 import csv
+import dataclasses
+import json
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.csv_writer import CSVWriter
+from backend.evaluator import (
+    load_models_config,
+    load_prompts_config,
+    run_calibration,
+    run_phase1,
+    run_phase2,
+)
 from backend.ollama_client import OllamaClient
 from backend.schemas import RunStatus
+from backend.system_profile import capture_and_save, format_banner, load_profile
+from backend.temperature import run_sweep as run_phase3_sweep
 
 # Paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
 RESULTS_CSV = DATA_DIR / "results.csv"
-SYSTEM_PROFILE_PATH = DATA_DIR / "system_profile.json"
 TEMPERATURE_CSV = DATA_DIR / "temperature_runs.csv"
-MODELS_CONFIG = CONFIG_DIR / "models.json"
 
-# Run state: "idle" | "running" | "done"
-_run_status = "idle"
-_run_task: asyncio.Task | None = None
+_log = logging.getLogger(__name__)
+
+# Shared Ollama client — one connection pool for the lifetime of the process
+_ollama = OllamaClient()
 
 
-def load_models_config() -> list[dict]:
-    """Load model list from config (display metadata)."""
-    if not MODELS_CONFIG.exists():
-        return []
-    import json
-    with open(MODELS_CONFIG, encoding="utf-8") as f:
-        data = json.load(f)
-    return data if isinstance(data, list) else []
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await _ollama.aclose()
+
+
+# Run state
+@dataclasses.dataclass
+class _RunState:
+    status: str = "idle"
+    task: asyncio.Task | None = None
+
+
+_state = _RunState()
+_run_lock = asyncio.Lock()
 
 
 async def run_evaluation_async(phase: int = 1) -> None:
     """Run the selected evaluation phase in the background (1, 2, or 3)."""
-    global _run_status
-    _run_status = "running"
     try:
-        from backend.evaluator import (
-            load_models_config as load_models,
-            load_prompts_config,
-            run_calibration,
-            run_phase1,
-            run_phase2,
-        )
-        from backend.system_profile import capture_and_save
-        from backend.temperature import run_sweep as run_phase3_sweep
-        from backend.csv_writer import CSVWriter
-
-        models = load_models()
+        models = load_models_config()
         prompts = load_prompts_config()
-        client = OllamaClient()
         csv_writer = CSVWriter()
 
         if phase in (1, 2):
-            # Capture hardware and run calibration before phase 1 or 2
             profile = capture_and_save()
             machine_id = profile.get("machine_id", "")
-            baseline_tps = await run_calibration(client, models)
+            baseline_tps = await run_calibration(_ollama, models)
             capture_and_save(baseline_tps=baseline_tps)
 
             if phase == 1:
-                await run_phase1(client, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
+                await run_phase1(_ollama, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
             else:
-                await run_phase2(client, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
+                await run_phase2(_ollama, csv_writer, models, prompts, dry_run=False, machine_id=machine_id, baseline_tps=baseline_tps)
         elif phase == 3:
-            # Phase 3: capture profile only (no calibration needed for temperature runs)
             capture_and_save()
-            await run_phase3_sweep(client, csv_writer, models, prompts, dry_run=False)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).exception("Evaluation run failed: %s", e)
+            await run_phase3_sweep(_ollama, csv_writer, models, prompts, dry_run=False)
+    except Exception:
+        _log.exception("Evaluation run failed (phase %s)", phase)
     finally:
-        _run_status = "done"
+        _state.status = "done"
 
 
 app = FastAPI(
     title="SLM Evaluation Dashboard API",
     description="Backend for benchmarking small language models via Ollama",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -102,9 +105,8 @@ async def get_models():
     Return list of available Ollama models (from Ollama /api/tags).
     Used by frontend to show which models are installed.
     """
-    client = OllamaClient()
     try:
-        models = await client.list_models()
+        models = await _ollama.list_models()
         return {"models": models}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Ollama unavailable: {e}")
@@ -113,7 +115,10 @@ async def get_models():
 @app.get("/config/models")
 async def get_config_models():
     """Return model display metadata from config/models.json."""
-    data = load_models_config()
+    try:
+        data = load_models_config()
+    except Exception:
+        data = []
     return {"models": data}
 
 
@@ -121,7 +126,6 @@ async def get_config_models():
 async def get_system_profile():
     """Return hardware context from data/system_profile.json for dashboard banner."""
     try:
-        from backend.system_profile import load_profile, capture_and_save, format_banner
         profile = load_profile()
         if not profile:
             profile = capture_and_save()
@@ -134,8 +138,6 @@ async def get_system_profile():
 async def get_config_prompts():
     """Return prompt metadata from config/prompts.json."""
     try:
-        from backend.evaluator import load_prompts_config
-
         prompts = load_prompts_config()
     except Exception:
         prompts = []
@@ -148,20 +150,19 @@ async def trigger_run(phase: int = Query(1, description="Evaluation phase: 1, 2,
     Start an evaluation run asynchronously (phase 1, 2, or 3).
     Returns immediately; poll GET /status for completion.
     """
-    global _run_status, _run_task
-
-    if _run_status == "running":
-        return {"status": "running", "message": "Evaluation already in progress"}
-
-    run_phase = 1 if phase not in (1, 2, 3) else phase
-    _run_task = asyncio.create_task(run_evaluation_async(phase=run_phase))
+    async with _run_lock:
+        if _state.status == "running":
+            return {"status": "running", "message": "Evaluation already in progress"}
+        run_phase = phase if phase in (1, 2, 3) else 1
+        _state.status = "running"
+        _state.task = asyncio.create_task(run_evaluation_async(phase=run_phase))
     return {"status": "started", "message": f"Phase {run_phase} evaluation run started"}
 
 
 @app.get("/status")
 async def get_status():
     """Return current run status: idle | running | done."""
-    return RunStatus(status=_run_status)
+    return RunStatus(status=_state.status)
 
 
 @app.get("/results")
@@ -177,14 +178,16 @@ async def get_results():
     with open(RESULTS_CSV, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Coerce numeric columns for frontend
-            for key in ("ttft_ms", "tokens_per_second", "total_latency_ms", "token_count", "normalised_tps"):
+            for key in ("ttft_ms", "tokens_per_second", "total_latency_ms", "normalised_tps"):
                 if key in row and row[key] != "":
                     try:
-                        if key == "token_count":
-                            row[key] = int(float(row[key]))
-                        else:
-                            row[key] = float(row[key])
+                        row[key] = float(row[key])
+                    except (ValueError, TypeError):
+                        pass
+            for key in ("token_count", "phase"):
+                if key in row and row[key] != "":
+                    try:
+                        row[key] = int(float(row[key]))
                     except (ValueError, TypeError):
                         pass
             rows.append(row)
@@ -195,18 +198,20 @@ async def get_results():
 @app.get("/validation-summary")
 async def get_validation_summary():
     """
-    Per-model counts of pass / retry / fail from results.csv.
+    Per-model counts of pass / retry / fail from Phase 2 rows in results.csv.
     pass = valid_json true, retry_used false; retry = valid_json true, retry_used true;
     fail = valid_json false.
     """
     if not RESULTS_CSV.exists():
         return {"summary": {}}
 
-    # Rows with valid_json/retry_used; skip rows that are Phase 1-only (no valid_json column or empty)
     per_model: dict[str, dict[str, int]] = {}
     with open(RESULTS_CSV, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Only Phase 2 rows carry meaningful valid_json data
+            if row.get("phase", "") != "2":
+                continue
             model = row.get("model", "")
             if not model:
                 continue
@@ -214,7 +219,6 @@ async def get_validation_summary():
                 per_model[model] = {"pass": 0, "retry": 0, "fail": 0}
             vj = row.get("valid_json", "")
             ru = row.get("retry_used", "")
-            # Coerce to bool: "True"/"true"/"1" -> True, else False
             valid = str(vj).lower() in ("true", "1", "yes") if vj != "" else False
             retry = str(ru).lower() in ("true", "1", "yes") if ru != "" else False
             if valid and not retry:
@@ -233,12 +237,11 @@ async def trigger_temperature_run():
     Start the Phase 3 temperature sweep asynchronously.
     Returns immediately; poll GET /status for completion.
     """
-    global _run_status, _run_task
-
-    if _run_status == "running":
-        return {"status": "running", "message": "Evaluation already in progress"}
-
-    _run_task = asyncio.create_task(run_evaluation_async(phase=3))
+    async with _run_lock:
+        if _state.status == "running":
+            return {"status": "running", "message": "Evaluation already in progress"}
+        _state.status = "running"
+        _state.task = asyncio.create_task(run_evaluation_async(phase=3))
     return {"status": "started", "message": "Temperature sweep (Phase 3) started"}
 
 
@@ -255,15 +258,17 @@ async def get_variance():
     with open(TEMPERATURE_CSV, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            for key in ("temperature", "run_index", "jaccard_similarity"):
+            for key in ("temperature", "jaccard_similarity"):
                 if key in row and row[key] != "":
                     try:
-                        if key == "run_index":
-                            row[key] = int(float(row[key]))
-                        else:
-                            row[key] = float(row[key])
+                        row[key] = float(row[key])
                     except (ValueError, TypeError):
                         pass
+            if "run_index" in row and row["run_index"] != "":
+                try:
+                    row["run_index"] = int(float(row["run_index"]))
+                except (ValueError, TypeError):
+                    pass
             rows.append(row)
 
     by_model_prompt: dict[str, dict[str, list]] = {}

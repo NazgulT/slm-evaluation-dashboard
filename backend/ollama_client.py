@@ -7,6 +7,8 @@ Calls POST /api/generate with stream=True, records timing metrics
 
 import json
 import time
+from collections.abc import Callable
+
 import httpx
 from pydantic import BaseModel
 
@@ -30,7 +32,72 @@ class OllamaClient:
 
     def __init__(self, base_url: str = "http://localhost:11434", timeout: float = 120.0):
         self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
+        self._client = httpx.AsyncClient(timeout=timeout)
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "OllamaClient":
+        return self
+
+    async def __aexit__(self, *_) -> None:
+        await self.aclose()
+
+    def _error_metrics(
+        self,
+        model: str,
+        prompt_id: str,
+        prompt_category: str,
+        error: str,
+    ) -> InferenceMetrics:
+        return InferenceMetrics(
+            model=model,
+            prompt_id=prompt_id,
+            prompt_category=prompt_category,
+            ttft_ms=0.0,
+            tokens_per_second=0.0,
+            total_latency_ms=0.0,
+            token_count=0,
+            raw_text="",
+            error=error,
+        )
+
+    async def _stream(
+        self,
+        endpoint: str,
+        body: dict,
+        extract_content: Callable[[dict], str],
+    ) -> tuple[list[str], float, int, float, float]:
+        """
+        Stream a POST request and collect timing metrics.
+        Returns (raw_chunks, ttft_ms, eval_count, eval_duration_ns, total_latency_ms).
+        """
+        ttft_ms: float | None = None
+        eval_count = 0
+        eval_duration_ns = 0.0
+        raw_chunks: list[str] = []
+        start_time = time.perf_counter()
+
+        async with self._client.stream("POST", f"{self.base_url}{endpoint}", json=body) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                content = extract_content(chunk)
+                if ttft_ms is None and content:
+                    ttft_ms = (time.perf_counter() - start_time) * 1000
+                if content:
+                    raw_chunks.append(content)
+                if chunk.get("done"):
+                    eval_count = chunk.get("eval_count", len(raw_chunks))
+                    eval_duration_ns = chunk.get("eval_duration", 0) or 1
+
+        total_latency_ms = (time.perf_counter() - start_time) * 1000
+        return raw_chunks, ttft_ms or 0.0, eval_count, eval_duration_ns, total_latency_ms
 
     async def generate(
         self,
@@ -50,21 +117,10 @@ class OllamaClient:
         - TPS: tokens per second from eval_count / eval_duration in final chunk
         - Total latency: wall-clock from request start to stream end
         """
-        ttft_ms: float | None = None
-        token_count = 0
-        eval_count = 0
-        eval_duration_ns = 0.0
-        raw_chunks: list[str] = []
-        start_time = time.perf_counter()
-
-        body: dict = {
-            "model": model,
-            "prompt": prompt,
-            "stream": True,
-        }
+        body: dict = {"model": model, "prompt": prompt, "stream": True}
         if system_prompt:
             body["system"] = system_prompt
-        opts = {}
+        opts: dict = {}
         if temperature is not None:
             opts["temperature"] = temperature
         if num_predict is not None:
@@ -73,76 +129,28 @@ class OllamaClient:
             body["options"] = opts
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                async with client.stream(
-                    "POST",
-                    f"{self.base_url}/api/generate",
-                    json=body,
-                ) as response:
-                    response.raise_for_status()
-
-                    async for line in response.aiter_lines():
-                        if not line.strip():
-                            continue
-
-                        try:
-                            chunk = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-
-                        # First non-empty response = TTFT
-                        response_text = chunk.get("response", "")
-                        if ttft_ms is None and response_text:
-                            ttft_ms = (time.perf_counter() - start_time) * 1000
-
-                        if response_text:
-                            raw_chunks.append(response_text)
-                            token_count += 1
-
-                        # Final chunk has eval metrics
-                        if chunk.get("done"):
-                            eval_count = chunk.get("eval_count", token_count)
-                            eval_duration_ns = chunk.get("eval_duration", 0) or 1
-
+            chunks, ttft, eval_count, eval_dur, latency = await self._stream(
+                "/api/generate",
+                body,
+                lambda chunk: chunk.get("response", ""),
+            )
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                return InferenceMetrics(
-                    model=model,
-                    prompt_id=prompt_id,
-                    prompt_category=prompt_category,
-                    ttft_ms=0.0,
-                    tokens_per_second=0.0,
-                    total_latency_ms=0.0,
-                    token_count=0,
-                    raw_text="",
-                    error=f"Model not found: {model}",
-                )
+                return self._error_metrics(model, prompt_id, prompt_category, f"Model not found: {model}")
             raise
         except Exception as e:
-            return InferenceMetrics(
-                model=model,
-                prompt_id=prompt_id,
-                prompt_category=prompt_category,
-                ttft_ms=0.0,
-                tokens_per_second=0.0,
-                total_latency_ms=0.0,
-                token_count=0,
-                raw_text="",
-                error=str(e),
-            )
+            return self._error_metrics(model, prompt_id, prompt_category, str(e))
 
-        total_latency_ms = (time.perf_counter() - start_time) * 1000
-        tps = eval_count / (eval_duration_ns / 1e9) if eval_duration_ns else 0.0
-
+        tps = eval_count / (eval_dur / 1e9) if eval_dur else 0.0
         return InferenceMetrics(
             model=model,
             prompt_id=prompt_id,
             prompt_category=prompt_category,
-            ttft_ms=ttft_ms or 0.0,
+            ttft_ms=ttft,
             tokens_per_second=tps,
-            total_latency_ms=total_latency_ms,
-            token_count=eval_count or token_count,
-            raw_text="".join(raw_chunks),
+            total_latency_ms=latency,
+            token_count=eval_count or len(chunks),
+            raw_text="".join(chunks),
         )
 
     async def generate_chat(
@@ -157,90 +165,36 @@ class OllamaClient:
         Used for Phase 2 (system + user, optional retry user message).
         messages: list of {"role": "system"|"user"|"assistant", "content": "..."}.
         """
-        ttft_ms: float | None = None
-        token_count = 0
-        eval_count = 0
-        eval_duration_ns = 0.0
-        raw_chunks: list[str] = []
-        start_time = time.perf_counter()
-
         body = {"model": model, "messages": messages, "stream": True}
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                async with client.stream(
-                    "POST",
-                    f"{self.base_url}/api/chat",
-                    json=body,
-                ) as response:
-                    response.raise_for_status()
-
-                    async for line in response.aiter_lines():
-                        if not line.strip():
-                            continue
-                        try:
-                            chunk = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-
-                        msg = chunk.get("message") or {}
-                        content = msg.get("content") or ""
-                        if ttft_ms is None and content:
-                            ttft_ms = (time.perf_counter() - start_time) * 1000
-                        if content:
-                            raw_chunks.append(content)
-
-                        if chunk.get("done"):
-                            eval_count = chunk.get("eval_count", 0)
-                            eval_duration_ns = chunk.get("eval_duration", 0) or 1
-
+            chunks, ttft, eval_count, eval_dur, latency = await self._stream(
+                "/api/chat",
+                body,
+                lambda chunk: (chunk.get("message") or {}).get("content") or "",
+            )
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                return InferenceMetrics(
-                    model=model,
-                    prompt_id=prompt_id,
-                    prompt_category=prompt_category,
-                    ttft_ms=0.0,
-                    tokens_per_second=0.0,
-                    total_latency_ms=0.0,
-                    token_count=0,
-                    raw_text="",
-                    error=f"Model not found: {model}",
-                )
+                return self._error_metrics(model, prompt_id, prompt_category, f"Model not found: {model}")
             raise
         except Exception as e:
-            return InferenceMetrics(
-                model=model,
-                prompt_id=prompt_id,
-                prompt_category=prompt_category,
-                ttft_ms=0.0,
-                tokens_per_second=0.0,
-                total_latency_ms=0.0,
-                token_count=0,
-                raw_text="",
-                error=str(e),
-            )
+            return self._error_metrics(model, prompt_id, prompt_category, str(e))
 
-        total_latency_ms = (time.perf_counter() - start_time) * 1000
-        full_text = "".join(raw_chunks)
-        token_count = eval_count or len(raw_chunks)
-        tps = eval_count / (eval_duration_ns / 1e9) if eval_duration_ns else 0.0
-
+        tps = eval_count / (eval_dur / 1e9) if eval_dur else 0.0
         return InferenceMetrics(
             model=model,
             prompt_id=prompt_id,
             prompt_category=prompt_category,
-            ttft_ms=ttft_ms or 0.0,
+            ttft_ms=ttft,
             tokens_per_second=tps,
-            total_latency_ms=total_latency_ms,
-            token_count=eval_count or token_count,
-            raw_text=full_text,
+            total_latency_ms=latency,
+            token_count=eval_count or len(chunks),
+            raw_text="".join(chunks),
         )
 
     async def list_models(self) -> list[dict]:
         """Fetch available models from Ollama /api/tags."""
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{self.base_url}/api/tags")
-            response.raise_for_status()
-            data = response.json()
-            return data.get("models", [])
+        response = await self._client.get(f"{self.base_url}/api/tags")
+        response.raise_for_status()
+        data = response.json()
+        return data.get("models", [])

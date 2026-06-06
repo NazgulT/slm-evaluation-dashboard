@@ -1,12 +1,22 @@
 # Small Language Model Evaluation Dashboard
 
 A small language model (SLM) evaluation dashboard that runs **entirely offline** using [Ollama](https://ollama.com) as the local inference backend. It benchmarks multiple small models (2–5B parameters) across three phases: raw inference performance, structured output validation, and temperature variance analysis. Results are written to CSV and exposed via a REST API for a React dashboard.
+
+## Quick results summary
+
+> Evaluated across **40 runs** (4 models × 5 prompts × 2 phases) on a single machine.
+>
+> - **`gemma2:2b`** — fastest time to first token (1,199 ms), perfect JSON validity (5/5), and zero retries. Best choice when output reliability and responsiveness matter most.
+> - **`qwen2.5:3b`** — highest raw throughput (17.54 tok/s), perfect JSON validity (5/5), and only one retry. Best balance of speed and reliability.
+> - **`llama3.2:3b`** — lowest end-to-end latency (7,277 ms) with solid reliability (4/5 JSON). Strong all-rounder.
+> - **`phi3:mini`** — trails in every dimension: ~30% lower TPS than the field, 2× the latency of the fastest model, and the weakest JSON compliance (3/5). Suitable only where response time is not a constraint.
+
 The following SLMs were benchmarked (the list is expanding):
 
-- phi3-mini
-- gemma2-2b
-- qwen2.5-3b
-- llama3.2-3b
+- phi3:mini
+- gemma2:2b
+- qwen2.5:3b
+- llama3.2:3b
 
 ## One-command setup
 
@@ -65,34 +75,34 @@ ollama pull phi3:mini && ollama pull gemma2:2b && ollama pull qwen2.5:3b && olla
  
 # Small Language Model Evaluation Results
 
-Evaluation of four small language models (SLMs) across **40 total runs** (10 per model) covering factual, creative, reasoning, and code prompt categories. Metrics are averaged per model; `valid_json` and `retry_used` are reported as counts out of total runs.
+Evaluation of four small language models (SLMs) across **40 total runs** (10 per model — 5 prompts × Phase 1 + Phase 2) covering factual, creative, reasoning, code, and instruction-following categories. TTFT, TPS, latency, and normalised TPS are averaged across all 10 runs per model; JSON validity and retries are Phase 2 counts (5 runs each).
 
 ## Results Table
 
-| Model | Avg TTFT (ms) | Avg Tokens/sec | Avg Total Latency (ms) | Valid JSON (count) | Retry Used (count) |
-|---|---:|---:|---:|---:|---:|
-| phi3:mini | 2593.1 | 11.02 | 13194.9 | 9 / 10 | 1 / 10 |
-| gemma2:2b | 1320.3 | 15.13 | 9293.3 | 10 / 10 | 0 / 10 |
-| qwen2.5:3b | 2336.2 | 16.62 | 7287.1 | 10 / 10 | 1 / 10 |
-| llama3.2:3b | 1873.6 | 15.89 | 7237.2 | 9 / 10 | 1 / 10 |
+| Model | Avg TTFT (ms) | Avg TPS (tok/s) | Avg Latency (ms) | Avg Norm TPS | Valid JSON (Phase 2) | Retries (Phase 2) |
+|---|---:|---:|---:|---:|---:|---:|
+| phi3:mini | 2,640.7 | 11.88 | 15,075.9 | 0.83 | 3 / 5 | 2 / 5 |
+| gemma2:2b | 1,198.8 | 16.86 | 8,311.6 | 1.45 | 5 / 5 | 0 / 5 |
+| qwen2.5:3b | 1,643.0 | 17.54 | 8,952.4 | 1.10 | 5 / 5 | 1 / 5 |
+| llama3.2:3b | 2,637.9 | 15.21 | 7,276.8 | 0.95 | 4 / 5 | 1 / 5 |
 
-> **Columns:** TTFT = Time to First Token; Tokens/sec = generation throughput; Total Latency = end-to-end response time; Valid JSON = runs producing parseable JSON output; Retry Used = runs that required a retry.
+> **Columns:** TTFT = Time to First Token (lower is better); TPS = generation throughput (higher is better); Total Latency = end-to-end response time (lower is better); Norm TPS = observed TPS divided by per-model calibration baseline — values above 1.0 indicate above-baseline throughput; Valid JSON / Retries = Phase 2 structured-output counts out of 5 prompts.
 
 ---
 
 ## Analysis
 
 **Latency & Responsiveness**
-`phi3:mini` stands out as the slowest model, with the highest average TTFT (2,593 ms) and by far the highest total latency (~13,195 ms) — nearly 1.8× slower end-to-end than the next worst, `gemma2:2b`. `qwen2.5:3b` and `llama3.2:3b` are essentially tied for the fastest total latency (~7,237–7,287 ms), repeating the pattern seen in the previous evaluation. `gemma2:2b` is the quickest to first token at 1,320 ms but accumulates more latency through generation, finishing third overall.
+`gemma2:2b` is the quickest to first token at 1,199 ms — more than 2× faster than `phi3:mini` and `llama3.2:3b` (both near 2,640 ms). Despite that advantage at the start, `gemma2:2b` accumulates latency through longer generations and finishes second overall (8,312 ms). `llama3.2:3b` posts the lowest end-to-end latency (7,277 ms) by producing more concise outputs, while `phi3:mini` is the clear outlier at 15,076 ms — nearly double the next-worst model — driven by verbose responses on code and instruction prompts.
 
 **Throughput**
-Token generation speed slightly differs amongst the models. `qwen2.5:3b` leads at 16.62 tok/s, followed closely by `llama3.2:3b` (15.89) and `gemma2:2b` (15.13), while `phi3:mini` lags significantly at 11.02 tok/s — roughly 35% slower than the top three. This throughput gap is the primary driver of `phi3:mini`'s high total latency. We can also suggest that the throughput is contrained by the inference hardware the test were ran on.
+`qwen2.5:3b` leads raw token generation at 17.54 tok/s, followed by `gemma2:2b` (16.86) and `llama3.2:3b` (15.21). `phi3:mini` lags at 11.88 tok/s — roughly 32% slower than the field. The normalised TPS column (relative to each model's own calibration baseline) reinforces this: `gemma2:2b` scores 1.45, well above its baseline, while `phi3:mini` sits at 0.83, consistently below it. `qwen2.5:3b` (1.10) and `llama3.2:3b` (0.95) track close to their baselines, indicating stable, predictable throughput.
 
 **Reliability (JSON validity & Retries)**
-`gemma2:2b` stands out here - 10/10 valid JSON and zero retries — making it the most reliable model across both evaluations. `qwen2.5:3b` matched it on JSON validity (10/10) but required one retry. `phi3:mini` and `llama3.2:3b` each missed one valid JSON response and used one retry, putting them roughly on par for reliability.
+`gemma2:2b` is the standout — 5/5 valid JSON on the first attempt, zero retries. `qwen2.5:3b` also achieved 5/5 validity but required one retry (on the creative prompt), suggesting occasional schema non-conformance that self-corrects. `llama3.2:3b` missed one prompt (instruction-following) and used one retry, landing at 4/5. `phi3:mini` was the weakest here: two prompts failed to produce valid JSON even after a retry (creative and instruction), and two retries were used — a meaningful reliability gap for structured-output workloads.
 
 **Summary Recommendation**
-`qwen2.5:3b` and `llama3.2:3b` offer the best balance of speed and throughput for latency-sensitive applications. `gemma2:2b` remains the strongest choice where output reliability is the top priority. `phi3:mini` continues to trail the field on both throughput and latency and is best suited for tasks where response time is not a constraint.
+For latency-sensitive applications, `llama3.2:3b` delivers the lowest end-to-end response time with solid reliability. For structured-output or tool-calling workloads where schema compliance is critical, `gemma2:2b` is the safest choice — perfect validity, fastest first token, zero retries. `qwen2.5:3b` is the best all-rounder: highest throughput, perfect validity, and competitive latency. `phi3:mini` trails in every dimension and is best suited to offline, throughput-insensitive tasks where response quality outweighs speed.
 
 ---
 
